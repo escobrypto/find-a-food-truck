@@ -51,17 +51,17 @@ const TRUST_LEVELS=[{lv:0,name:"New",color:"#888",icon:"●"},{lv:1,name:"Member
 
 // ─── Styles ──────────────────────────────────────────────────────────────
 const G=`
-@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=General+Sans:wght@300;400;500;600;700&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;0,9..144,800;0,9..144,900;1,9..144,300;1,9..144,400;1,9..144,700&family=Manrope:wght@300;400;500;600;700;800&family=Lora:ital,wght@0,400;0,500;0,600;1,400;1,500&family=JetBrains+Mono:wght@400;500;600;700&display=swap');
 :root{
   --bg:#FAF6F1;--card:#FFFFFF;--ink:#1A1613;--sub:#8C857C;--mute:#B5AFA7;
   --line:#E8E3DC;--tint:#F3EDE6;--warm:#FFF8F0;
   --red:#E54D2E;--redL:#FFF0ED;--redD:#C4391A;
   --grn:#2D8C3C;--blu:#2B6CB0;--amb:#C77D15;--pur:#7C3AED;
   --adm-bg:#0B0C0F;--adm-s:rgba(255,255,255,0.035);--adm-b:rgba(255,255,255,0.07);--adm-t:rgba(255,255,255,0.5);--adm-d:rgba(255,255,255,0.25);
-  --sans:'General Sans',system-ui,sans-serif;
-  --serif:'Instrument Serif',Georgia,serif;
-  --body:'Crimson Pro',Georgia,serif;
-  --mono:'Space Mono',monospace;
+  --sans:'Manrope',system-ui,sans-serif;
+  --serif:'Fraunces',Georgia,serif;
+  --body:'Lora',Georgia,serif;
+  --mono:'JetBrains Mono',monospace;
   --ease:cubic-bezier(.4,0,.2,1);--spring:cubic-bezier(.175,.885,.32,1.275);
 }
 *{box-sizing:border-box;margin:0;padding:0}
