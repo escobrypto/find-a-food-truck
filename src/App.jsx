@@ -17,7 +17,9 @@ function Btn({children,onClick,v="primary",full,sz="md",style={}}){const base={f
 function Input({label,value,onChange,placeholder,type="text",textarea,rows=3}){const s={width:"100%",padding:textarea?"14px 16px":"12px 16px",borderRadius:8,border:"1px solid var(--line)",fontSize:14,fontFamily:"var(--sans)",color:"var(--ink)",background:"var(--card)",marginBottom:16,resize:textarea?"vertical":"none"};return<div>{label&&<label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6,letterSpacing:".02em"}}>{label}</label>}{textarea?<textarea value={value} onChange={onChange} placeholder={placeholder} style={s} rows={rows}/>:<input value={value} onChange={onChange} placeholder={placeholder} type={type} style={s}/>}</div>}
 function Nav({go,route}){return<nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(250,250,248,.9)",backdropFilter:"blur(16px)",borderBottom:"1px solid var(--line)"}}><div style={{maxWidth:1120,margin:"0 auto",padding:"0 40px",height:56,display:"flex",alignItems:"center",justifyContent:"space-between"}}><div onClick={()=>go("/")} style={{cursor:"pointer",display:"flex",alignItems:"baseline",gap:6}}><span style={{fontFamily:"var(--serif)",fontSize:17,fontWeight:400,color:"var(--ink)",fontStyle:"italic"}}>find a</span><span style={{fontFamily:"var(--serif)",fontSize:17,fontWeight:500,color:"var(--accent)"}}>food truck</span></div><div className="nav-links" style={{display:"flex",alignItems:"center",gap:32}}>{[["Submit Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"]].map(([l,p])=><span key={p} onClick={()=>go(p)} style={{fontSize:13,fontWeight:500,color:route===p?"var(--ink)":"var(--mute)",cursor:"pointer",transition:"color .15s"}} onMouseEnter={e=>e.currentTarget.style.color="var(--ink)"} onMouseLeave={e=>{if(route!==p)e.currentTarget.style.color="var(--mute)"}}>{l}</span>)}</div><div style={{display:"flex",gap:8}}><Btn v="ghost" sz="sm" onClick={()=>go("/member")}>Vendor Login</Btn><Btn v="accent" sz="sm" onClick={()=>go("/submit")}>Submit Event</Btn></div></div></nav>}
 
-function HomePage({go}){return<>
+function HomePage({go}){
+  const Img=({src,alt})=><div style={{flex:1,minWidth:0,height:220,borderRadius:10,overflow:"hidden",background:"var(--tint)"}}><img src={src} alt={alt} style={{width:"100%",height:"100%",objectFit:"cover",display:"block",filter:"saturate(.85)"}}/></div>;
+  return<>
   {/* Hero */}
   <section style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"120px 40px 80px",position:"relative"}}>
     <div style={{position:"absolute",top:"10%",right:"8%",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle,rgba(212,72,44,.04),transparent 70%)",filter:"blur(40px)"}} className="mob-hide"/>
@@ -38,31 +40,51 @@ function HomePage({go}){return<>
     {[...Array(3)].map((_,j)=><div key={j} style={{display:"flex"}}>{["BBQ & Smoked Meats","Mexican / Latin","Southern / Soul Food","Asian Fusion","Breakfast & Brunch","Beverages & Dessert","Catering","Weddings","Corporate Events","Festivals"].map((t,i)=><span key={i} style={{padding:"0 32px",fontSize:12,color:"var(--mute)",fontFamily:"var(--mono)",letterSpacing:".02em"}}>{t}</span>)}</div>)}
   </div></div>
 
+  {/* Image strip 1 */}
+  <div style={{padding:"48px 40px 0"}}><div className="g3 mob-hide" style={{maxWidth:1040,margin:"0 auto",display:"flex",gap:12}}>
+    <Img src="https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=600&h=400&fit=crop" alt="Food truck serving"/>
+    <Img src="https://images.unsplash.com/photo-1567129937968-cdad8f07e2f8?w=600&h=400&fit=crop" alt="Street food preparation"/>
+    <Img src="https://images.unsplash.com/photo-1513639776629-7b43c5fa0613?w=600&h=400&fit=crop" alt="Food truck event"/>
+  </div></div>
+
   {/* How It Works */}
-  <section style={{padding:"100px 40px",borderTop:"1px solid var(--line)"}}><div style={{maxWidth:1040,margin:"0 auto"}}>
+  <section style={{padding:"80px 40px 100px"}}><div style={{maxWidth:1040,margin:"0 auto"}}>
     <div className="au" style={{marginBottom:56}}><p style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:12}}>HOW IT WORKS</p><h2 style={{fontSize:34,fontWeight:300,fontFamily:"var(--serif)",color:"var(--ink)",maxWidth:440,letterSpacing:"-.01em"}}>Simple for hosts.<br/>Valuable for vendors.</h2></div>
     <div className="au d1 g3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:1,background:"var(--line)",borderRadius:12,overflow:"hidden"}}>
       {[["For Event Hosts","Tell us your date, location, headcount, and requirements. We route your request to verified vendors who match — they respond directly with availability and pricing.","Submit an Event →","/submit"],["For Vendors","Get listed in the network for free. Receive qualified booking opportunities from hosts across Richmond. Upgrade to Verified for priority access and category protection.","Join the Network →","/join"],["Direct Booking","No platform fees. No middlemen. Hosts and vendors work out the details directly. We just make the connection.","Learn More →","/access"]].map(([t,d,cta,link])=><div key={t} style={{background:"var(--card)",padding:40}}><h3 style={{fontSize:14,fontWeight:600,color:"var(--ink)",marginBottom:12}}>{t}</h3><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.75,marginBottom:24,fontWeight:300}}>{d}</p><span onClick={()=>go(link)} style={{fontSize:13,fontWeight:500,color:"var(--accent)",cursor:"pointer"}}>{cta}</span></div>)}
     </div>
   </div></section>
 
+  {/* Decorative divider */}
+  <div style={{padding:"0 40px"}}><div style={{maxWidth:1040,margin:"0 auto",display:"flex",alignItems:"center",gap:16}}><div style={{flex:1,height:1,background:"var(--line)"}}/><span style={{fontSize:11,color:"var(--mute)",fontFamily:"var(--mono)",letterSpacing:".1em",flexShrink:0}}>FAFTRVA</span><div style={{flex:1,height:1,background:"var(--line)"}}/></div></div>
+
   {/* Status */}
-  <section style={{padding:"72px 40px",borderTop:"1px solid var(--line)"}}><div className="stat-row" style={{maxWidth:880,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
+  <section style={{padding:"72px 40px"}}><div className="stat-row" style={{maxWidth:880,margin:"0 auto",display:"flex",justifyContent:"space-between",alignItems:"flex-start"}}>
     <div className="au"><p style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:12}}>CURRENT STATUS</p><h2 style={{fontSize:28,fontWeight:300,fontFamily:"var(--serif)",color:"var(--ink)"}}>Now accepting</h2></div>
     <div className="au d1" style={{display:"flex",gap:44}}>{[["Event\nsubmissions","Active"],["Vendor\napplications","Active"],["Verified Vendor\nwaitlist","Open"]].map(([l,s])=><div key={l} style={{textAlign:"right"}}><div style={{display:"flex",alignItems:"center",gap:6,justifyContent:"flex-end",marginBottom:6}}><div style={{width:6,height:6,borderRadius:99,background:s==="Active"?"#2D8C3C":"var(--accent)"}}/><span style={{fontSize:11,fontWeight:500,color:s==="Active"?"#2D8C3C":"var(--accent)",fontFamily:"var(--mono)"}}>{s}</span></div><span style={{fontSize:13,color:"var(--sub)",whiteSpace:"pre-line",lineHeight:1.5}}>{l}</span></div>)}</div>
   </div></section>
 
-  {/* Verified Access preview */}
-  <section style={{padding:"100px 40px",borderTop:"1px solid var(--line)",background:"var(--tint)"}}><div style={{maxWidth:600,margin:"0 auto",textAlign:"center"}}>
-    <p className="au" style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:16}}>VERIFIED VENDOR ACCESS</p>
-    <h2 className="au d1" style={{fontSize:30,fontWeight:300,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 20px",letterSpacing:"-.01em"}}>Priority placement. Direct lead access.<br/>Category protection.</h2>
-    <p className="au d2" style={{fontSize:15,color:"var(--sub)",lineHeight:1.75,marginBottom:16,fontWeight:300}}>A paid tier for vendors who want first access to booking requests, protected category placement, and featured visibility across the network.</p>
-    <p className="au d2" style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,marginBottom:36,fontWeight:300,fontStyle:"italic",fontFamily:"var(--serif)"}}>Limited to 1–2 vendors per cuisine category. When your slot is full, your competition is capped.</p>
-    <div className="au d3"><Btn v="accent" sz="lg" onClick={()=>go("/access")}>Join the Waitlist</Btn></div>
-  </div></section>
+  {/* Verified Access preview — dark section for contrast */}
+  <section style={{padding:"100px 40px",background:"var(--ink)",position:"relative",overflow:"hidden"}}>
+    <div style={{position:"absolute",top:"-20%",right:"-5%",width:400,height:400,borderRadius:"50%",background:"radial-gradient(circle,rgba(212,72,44,.06),transparent 60%)",filter:"blur(50px)"}}/>
+    <div style={{maxWidth:600,margin:"0 auto",textAlign:"center",position:"relative"}}>
+      <p className="au" style={{fontSize:12,fontWeight:500,color:"rgba(255,255,255,.3)",letterSpacing:".08em",marginBottom:16}}>VERIFIED VENDOR ACCESS</p>
+      <h2 className="au d1" style={{fontSize:30,fontWeight:300,fontFamily:"var(--serif)",color:"#fff",margin:"0 0 20px",letterSpacing:"-.01em"}}>Priority placement. Direct lead access.<br/>Category protection.</h2>
+      <p className="au d2" style={{fontSize:15,color:"rgba(255,255,255,.4)",lineHeight:1.75,marginBottom:16,fontWeight:300}}>A paid tier for vendors who want first access to booking requests, protected category placement, and featured visibility across the network.</p>
+      <p className="au d2" style={{fontSize:14,color:"rgba(255,255,255,.3)",lineHeight:1.7,marginBottom:36,fontWeight:300,fontStyle:"italic",fontFamily:"var(--serif)"}}>Limited to 1–2 vendors per cuisine category. When your slot is full, your competition is capped.</p>
+      <div className="au d3"><Btn v="accent" sz="lg" onClick={()=>go("/access")}>Join the Waitlist</Btn></div>
+    </div>
+  </section>
+
+  {/* Image strip 2 */}
+  <div style={{padding:"48px 40px 0"}}><div className="g3 mob-hide" style={{maxWidth:1040,margin:"0 auto",display:"flex",gap:12}}>
+    <Img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop" alt="Plated food"/>
+    <Img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop" alt="BBQ cooking"/>
+    <Img src="https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=600&h=400&fit=crop" alt="Fresh tacos"/>
+  </div></div>
 
   {/* Warm close */}
-  <section style={{padding:"80px 40px",borderTop:"1px solid var(--line)",textAlign:"center"}}>
+  <section style={{padding:"80px 40px",textAlign:"center"}}>
     <div style={{maxWidth:520,margin:"0 auto"}}>
       <h2 className="au" style={{fontSize:28,fontWeight:300,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 16px"}}>Richmond's food truck scene deserves better infrastructure.</h2>
       <p className="au d1" style={{fontSize:15,color:"var(--sub)",lineHeight:1.75,fontWeight:300,marginBottom:32}}>We're building it. Get in early — whether you're hosting an event or running a truck.</p>
