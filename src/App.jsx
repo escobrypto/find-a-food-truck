@@ -621,16 +621,16 @@ function AboutPage({go}){
   return<section style={{minHeight:"100vh",background:"var(--bg)",padding:"120px 40px 80px"}}>
     <div style={{maxWidth:760,margin:"0 auto"}}>
       <div className="au">
-        <h2 style={{fontSize:52,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 28px",lineHeight:1.1}}>We saw a broken system.<br/><em style={{color:"var(--red)"}}>So we built the fix.</em></h2>
-        <p style={{fontSize:19,color:"var(--sub)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:24,fontWeight:300}}>Richmond's food truck scene was chaos. Trucks were scattered across Facebook groups, buried under spam. Event hosts were guessing which vendors were reliable. Good operators were losing gigs to whoever posted last. Nobody had a system.</p>
-        <p style={{fontSize:19,color:"var(--sub)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:24,fontWeight:300}}>The Richmond Food Truck Association charges $300/year for a logo on a static page. StreetFoodFinder gives away a generic map listing. Neither generates bookings. Neither vets vendors. Neither helps hosts.</p>
-        <p style={{fontSize:19,color:"var(--ink)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:44,fontWeight:400}}>FAFT RVA is the operating system Richmond's food truck scene never had. One platform where verified trucks get found, hosts get matched, and bookings happen — not by accident, but by design.</p>
+        <h2 style={{fontSize:52,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 28px",lineHeight:1.1}}>The food truck scene<br/>deserved <em style={{color:"var(--red)"}}>better tools.</em></h2>
+        <p style={{fontSize:19,color:"var(--sub)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:24,fontWeight:300}}>Richmond has incredible food trucks. But the systems around them — finding vendors, booking events, connecting hosts with operators — hadn't kept up. Great trucks were hard to find. Good gigs were easy to miss.</p>
+        <p style={{fontSize:19,color:"var(--sub)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:24,fontWeight:300}}>Most platforms give you a listing and wish you luck. We thought that wasn't good enough. Food trucks deserve real infrastructure — vetted leads, structured events, and a community that works as hard as they do.</p>
+        <p style={{fontSize:19,color:"var(--ink)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:44,fontWeight:400}}>FAFT RVA is the platform we wished existed. One place where verified trucks get found, hosts get matched with the right vendors, and bookings just happen — cleanly, professionally, without the noise.</p>
       </div>
       <div className="au d2" style={{background:"var(--ink)",borderRadius:22,padding:48,marginBottom:40,position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:"-30%",right:"-10%",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(229,77,46,.06),transparent)",filter:"blur(40px)"}}/>
         <div style={{position:"relative"}}>
-          <span style={{color:"rgba(255,255,255,.25)",fontSize:10,fontWeight:600,letterSpacing:".15em",fontFamily:"var(--mono)"}}>THE THESIS</span>
-          <p style={{fontSize:22,color:"rgba(255,255,255,.55)",fontFamily:"var(--serif)",lineHeight:1.7,fontStyle:"italic",marginTop:16}}>Whoever owns the booking infrastructure owns the market. We're not building a directory — we're building the layer between every food truck and every event in Richmond. The platform where hosts post first and trucks show up first.</p>
+          <span style={{color:"rgba(255,255,255,.25)",fontSize:10,fontWeight:600,letterSpacing:".15em",fontFamily:"var(--mono)"}}>WHAT WE BELIEVE</span>
+          <p style={{fontSize:22,color:"rgba(255,255,255,.55)",fontFamily:"var(--serif)",lineHeight:1.7,fontStyle:"italic",marginTop:16}}>When you give great trucks the right tools and connect them with the right hosts, everyone wins. We're building the quiet infrastructure that makes Richmond's food truck scene the best in the country.</p>
         </div>
       </div>
       <div className="au d3 g3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,marginBottom:44}}>
@@ -643,8 +643,8 @@ function AboutPage({go}){
         )}
       </div>
       <div style={{textAlign:"center",paddingTop:36,borderTop:"1px solid var(--line)"}}>
-        <p style={{color:"var(--ink)",fontSize:17,fontFamily:"var(--body)",fontWeight:400}}>Founded by <strong>Ron Joseph</strong></p>
-        <p style={{color:"var(--sub)",fontSize:14,fontFamily:"var(--body)",marginTop:4}}>Richmond, VA · Building infrastructure, not a hobby group.</p>
+        <p style={{color:"var(--ink)",fontSize:17,fontFamily:"var(--body)",fontWeight:400}}>Built by <strong>Laurence Ash LLC</strong></p>
+        <p style={{color:"var(--sub)",fontSize:14,fontFamily:"var(--body)",marginTop:4}}>Richmond, VA · Quietly building the standard.</p>
         <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:24}}><Btn onClick={()=>go("/book")}>Book a truck</Btn><Btn v="outline" onClick={()=>go("/pricing")}>Vendor pricing</Btn></div>
       </div>
     </div>
