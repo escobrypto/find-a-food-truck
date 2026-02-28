@@ -169,7 +169,7 @@ function Nav({go,route}){
   const[sc,setSc]=useState(false);
   useEffect(()=>{const h=()=>setSc(window.scrollY>40);window.addEventListener("scroll",h);return()=>window.removeEventListener("scroll",h)},[]);
   const home=route==="/";const light=home&&!sc;
-  const links=[{t:"/trucks",l:"Trucks"},{t:"/events",l:"Events"},{t:"/book",l:"Book"},{t:"/pricing",l:"Vendors"},{t:"/about",l:"About"}];
+  const links=[{t:"/trucks",l:"Trucks"},{t:"/events",l:"Events"},{t:"/book",l:"Book"},{t:"/pricing",l:"Pricing"},{t:"/about",l:"About"}];
   return<nav style={{position:"fixed",top:0,left:0,right:0,zIndex:999,padding:sc?"10px 0":"16px 0",background:sc?"rgba(250,246,241,.92)":"transparent",backdropFilter:sc?"blur(24px) saturate(1.5)":"none",borderBottom:sc?"1px solid rgba(0,0,0,.04)":"none",transition:"all .5s var(--ease)"}}>
     <div style={{maxWidth:1240,margin:"0 auto",padding:"0 40px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
       <div onClick={()=>go("/")} style={{cursor:"pointer",display:"flex",alignItems:"baseline",gap:2}}>
@@ -204,7 +204,7 @@ function Hero({go}){
             Every great<br/>meal starts<br/><em style={{color:"var(--red)"}}>on wheels</em>
           </h1>
           <p className="au d2" style={{fontSize:19,color:"rgba(255,255,255,.35)",fontFamily:"var(--body)",lineHeight:1.85,maxWidth:440,margin:"0 0 44px",fontWeight:300}}>
-            Discover Richmond's best food trucks. Browse menus, track locations, and book catering for your next event.
+            Discover Richmond's best food trucks. Browse menus, track locations, and book catering — all in one place. The marketplace for serious operators and smart hosts.
           </p>
           <div className="au d3 hero-cta" style={{display:"flex",gap:12}}>
             <Btn sz="lg" onClick={()=>go("/trucks")}>Explore trucks</Btn>
@@ -430,32 +430,98 @@ function BookingPage({go}){
 
 // ─── Pricing ─────────────────────────────────────────────────────────────
 function PricingPage({go}){
-  const Check=()=><span style={{color:"var(--grn)",fontWeight:700,fontSize:14}}>✓</span>;
+  const Ck=({on=true})=><span style={{color:on?"var(--grn)":"var(--line)",fontWeight:700,fontSize:14}}>{on?"✓":"—"}</span>;
+  const cats=[{name:"BBQ & Smoked",total:5,taken:4},{name:"Mexican / Latin",total:5,taken:3},{name:"Southern / Soul",total:5,taken:4},{name:"Asian Fusion",total:4,taken:2},{name:"Breakfast / Brunch",total:4,taken:3},{name:"Beverages / Dessert",total:4,taken:2}];
   return<section style={{minHeight:"100vh",background:"var(--bg)",padding:"120px 40px 80px"}}>
-    <div style={{maxWidth:920,margin:"0 auto"}}>
-      <div className="au" style={{textAlign:"center",marginBottom:56}}>
+    <div style={{maxWidth:1060,margin:"0 auto"}}>
+      <div className="au" style={{textAlign:"center",marginBottom:24}}>
         <span style={{display:"inline-block",background:"var(--redL)",color:"var(--red)",fontSize:11,fontWeight:700,padding:"6px 18px",borderRadius:99,letterSpacing:".1em",fontFamily:"var(--sans)",marginBottom:20}}>FOR VENDORS</span>
-        <h2 style={{fontSize:48,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 14px"}}>Grow your truck business</h2>
-        <p style={{fontSize:18,color:"var(--sub)",fontFamily:"var(--body)",maxWidth:480,margin:"0 auto",fontWeight:300,lineHeight:1.7}}>Join Richmond's largest food truck community.</p>
+        <h2 style={{fontSize:48,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 14px"}}>Stop chasing. Start getting booked.</h2>
+        <p style={{fontSize:18,color:"var(--sub)",fontFamily:"var(--body)",maxWidth:520,margin:"0 auto",fontWeight:300,lineHeight:1.7}}>One booking covers months of membership. This is the cheapest customer acquisition channel you'll ever have.</p>
       </div>
-      <div className="au d1 g2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-        <div style={{background:"var(--card)",borderRadius:22,padding:44,border:"1.5px solid var(--line)",fontFamily:"var(--sans)"}}>
-          <div style={{fontSize:11,fontWeight:700,color:"var(--mute)",letterSpacing:".12em",marginBottom:10}}>FREE</div>
-          <div style={{fontSize:48,fontWeight:700,color:"var(--ink)"}}>$0<span style={{fontSize:16,fontWeight:400,color:"var(--mute)"}}>/mo</span></div>
-          <p style={{color:"var(--sub)",fontSize:14,margin:"10px 0 32px",fontWeight:300}}>Get listed and start connecting</p>
-          {["Basic profile","Apply to events","Respond to bookings","1 post/day","Community access","Customer reviews"].map(f=><div key={f} style={{display:"flex",gap:10,padding:"10px 0",borderBottom:"1px solid var(--line)"}}><Check/><span style={{color:"var(--ink)",fontSize:14}}>{f}</span></div>)}
-          <Btn v="soft" full style={{marginTop:28}} onClick={()=>go("/member")}>Get started free</Btn>
+
+      {/* ROI callout */}
+      <div className="au d1" style={{background:"var(--ink)",borderRadius:18,padding:"28px 36px",marginBottom:40,display:"flex",justifyContent:"center",gap:60,flexWrap:"wrap",textAlign:"center"}}>
+        {[["$800–$2,500+","Avg. booking revenue"],["1 booking","Pays for a full year"],["4,100+","Members see your truck"]].map(([v,l])=>
+          <div key={l}><div style={{fontSize:28,fontWeight:800,color:"#fff",fontFamily:"var(--sans)"}}>{v}</div><div style={{fontSize:12,color:"rgba(255,255,255,.3)",marginTop:4,fontFamily:"var(--mono)"}}>{l}</div></div>
+        )}
+      </div>
+
+      {/* 3-Tier Grid */}
+      <div className="au d2 g3" style={{display:"grid",gridTemplateColumns:"1fr 1.15fr 1fr",gap:16,marginBottom:48}}>
+        {/* Free */}
+        <div style={{background:"var(--card)",borderRadius:20,padding:36,border:"1.5px solid var(--line)",fontFamily:"var(--sans)",display:"flex",flexDirection:"column"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"var(--mute)",letterSpacing:".12em",marginBottom:8}}>BASIC</div>
+          <div style={{fontSize:44,fontWeight:800,color:"var(--ink)"}}>$0<span style={{fontSize:15,fontWeight:400,color:"var(--mute)"}}>/mo</span></div>
+          <p style={{color:"var(--sub)",fontSize:13,margin:"8px 0 28px",fontWeight:300,lineHeight:1.5}}>Get listed. See what's possible.</p>
+          <div style={{flex:1}}>
+            {["Basic directory listing","Apply to public events","Respond to bookings","1 post per week","Community access","Customer reviews"].map(f=><div key={f} style={{display:"flex",gap:9,padding:"9px 0",borderBottom:"1px solid var(--line)",fontSize:13}}><Ck/><span style={{color:"var(--ink)"}}>{f}</span></div>)}
+          </div>
+          <Btn v="soft" full style={{marginTop:24}} onClick={()=>go("/member")}>Get started free</Btn>
         </div>
-        <div style={{background:"var(--card)",borderRadius:22,padding:44,border:"2px solid var(--red)",position:"relative",boxShadow:"0 16px 64px rgba(229,77,46,.08)",fontFamily:"var(--sans)"}}>
-          <div style={{position:"absolute",top:-14,left:"50%",transform:"translateX(-50%)",background:"var(--red)",color:"#fff",padding:"6px 22px",borderRadius:99,fontSize:11,fontWeight:700,letterSpacing:".08em"}}>MOST POPULAR</div>
-          <div style={{fontSize:11,fontWeight:700,color:"var(--red)",letterSpacing:".12em",marginBottom:10}}>PREMIUM</div>
-          <div style={{fontSize:48,fontWeight:700,color:"var(--ink)"}}>$10<span style={{fontSize:16,fontWeight:400,color:"var(--mute)"}}>/mo</span></div>
-          <p style={{color:"var(--sub)",fontSize:14,margin:"10px 0 32px",fontWeight:300}}>Everything to dominate RVA</p>
-          {["Everything in Free, plus:","Weekly promo to 4,100+ members","Priority booking alerts","Verified ✓ badge","Analytics dashboard","Unlimited posts","Featured in search","Event priority placement","Booking responses shown first"].map((f,i)=><div key={f} style={{display:"flex",gap:10,padding:"10px 0",borderBottom:"1px solid var(--line)"}}><span style={{color:i===0?"var(--red)":"var(--grn)",fontWeight:700,fontSize:14}}>{i===0?"★":"✓"}</span><span style={{color:"var(--ink)",fontSize:14,fontWeight:i===0?700:400}}>{f}</span></div>)}
-          <Btn full sz="lg" style={{marginTop:28}} onClick={()=>go("/member")}>Get Premium</Btn>
+
+        {/* Verified — Hero card */}
+        <div style={{background:"var(--card)",borderRadius:20,padding:40,border:"2.5px solid var(--red)",position:"relative",boxShadow:"0 20px 80px rgba(229,77,46,.1)",fontFamily:"var(--sans)",display:"flex",flexDirection:"column",transform:"scale(1.02)"}}>
+          <div style={{position:"absolute",top:-15,left:"50%",transform:"translateX(-50%)",background:"var(--red)",color:"#fff",padding:"7px 24px",borderRadius:99,fontSize:11,fontWeight:700,letterSpacing:".08em",whiteSpace:"nowrap"}}>MOST POPULAR</div>
+          <div style={{fontSize:10,fontWeight:700,color:"var(--red)",letterSpacing:".12em",marginBottom:8}}>VERIFIED VENDOR</div>
+          <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+            <span style={{fontSize:44,fontWeight:800,color:"var(--ink)"}}>$49</span>
+            <span style={{fontSize:15,color:"var(--mute)"}}>/mo</span>
+          </div>
+          <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(45,140,60,.06)",border:"1px solid rgba(45,140,60,.1)",borderRadius:8,padding:"6px 12px",marginTop:10,marginBottom:24,alignSelf:"flex-start"}}>
+            <span style={{fontSize:11,fontWeight:700,color:"var(--grn)"}}>🔥 Founding rate: $29/mo locked for life</span>
+          </div>
+          <div style={{flex:1}}>
+            {[
+              ["Everything in Basic, plus:",true],["Verified ✓ badge",false],["Priority in host booking threads",false],["Private booking board access",false],
+              ["Weekly promotion to 4,100+",false],["Monthly spotlight eligible",false],["Featured website listing",false],
+              ["AI menu scanner",false],["Unlimited posts",false],["Booking responses shown first",false],["Analytics dashboard (coming soon)",false]
+            ].map(([f,head])=><div key={f} style={{display:"flex",gap:9,padding:"9px 0",borderBottom:"1px solid var(--line)",fontSize:13}}><span style={{color:head?"var(--red)":"var(--grn)",fontWeight:700,fontSize:14}}>{head?"★":"✓"}</span><span style={{color:"var(--ink)",fontWeight:head?700:400}}>{f}</span></div>)}
+          </div>
+          <Btn full sz="lg" style={{marginTop:24}} onClick={()=>go("/member")}>Become a Verified Vendor</Btn>
+          <p style={{color:"var(--mute)",fontSize:11,textAlign:"center",marginTop:10}}>30-day founding window · Then $49/mo</p>
+        </div>
+
+        {/* Premium Future */}
+        <div style={{background:"var(--ink)",borderRadius:20,padding:36,fontFamily:"var(--sans)",display:"flex",flexDirection:"column",position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:"-20%",right:"-15%",width:200,height:200,borderRadius:"50%",background:"radial-gradient(circle,rgba(251,191,36,.06),transparent)",filter:"blur(30px)"}}/>
+          <div style={{position:"relative"}}>
+            <div style={{fontSize:10,fontWeight:700,color:"#FBBF24",letterSpacing:".12em",marginBottom:8}}>PREMIUM</div>
+            <div style={{fontSize:44,fontWeight:800,color:"#fff"}}>$79<span style={{fontSize:15,fontWeight:400,color:"rgba(255,255,255,.35)"}}>–99/mo</span></div>
+            <p style={{color:"rgba(255,255,255,.3)",fontSize:13,margin:"8px 0 28px",fontWeight:300,lineHeight:1.5}}>For operators ready to dominate.</p>
+            <div style={{flex:1}}>
+              {["Everything in Verified, plus:","Guaranteed lead priority","Lead rotation first-in-line","Custom promo content monthly","Dedicated account manager","Exclusive event invitations","Advanced analytics + insights"].map((f,i)=><div key={f} style={{display:"flex",gap:9,padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:13}}><span style={{color:i===0?"#FBBF24":"rgba(255,255,255,.25)",fontWeight:700,fontSize:14}}>{i===0?"★":"✓"}</span><span style={{color:i===0?"#fff":"rgba(255,255,255,.5)",fontWeight:i===0?700:400}}>{f}</span></div>)}
+            </div>
+            <div style={{background:"rgba(251,191,36,.08)",border:"1px solid rgba(251,191,36,.12)",borderRadius:10,padding:"12px 16px",marginTop:24,textAlign:"center"}}>
+              <span style={{color:"#FBBF24",fontSize:12,fontWeight:600}}>Coming Q3 2026</span>
+            </div>
+          </div>
         </div>
       </div>
-      <div className="au d3" style={{textAlign:"center",marginTop:48}}>
+
+      {/* Category Scarcity */}
+      <div className="au d3" style={{background:"var(--card)",borderRadius:20,padding:40,border:"1.5px solid var(--line)",marginBottom:40}}>
+        <div style={{textAlign:"center",marginBottom:28}}>
+          <h3 style={{fontFamily:"var(--serif)",fontSize:24,color:"var(--ink)",margin:"0 0 8px"}}>Limited verified spots per cuisine</h3>
+          <p style={{color:"var(--sub)",fontSize:14,fontFamily:"var(--body)",fontWeight:300}}>We cap each category to protect your market position. Once full, new vendors join a waitlist.</p>
+        </div>
+        <div className="g3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
+          {cats.map(c=>{const pct=Math.round((c.taken/c.total)*100);const left=c.total-c.taken;const urgent=left<=1;
+            return<div key={c.name} style={{padding:18,borderRadius:14,border:`1.5px solid ${urgent?"rgba(229,77,46,.2)":"var(--line)"}`,background:urgent?"rgba(229,77,46,.02)":"var(--bg)"}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{fontWeight:600,fontSize:13,color:"var(--ink)",fontFamily:"var(--sans)"}}>{c.name}</span>
+                <span style={{fontSize:11,fontWeight:700,color:urgent?"var(--red)":"var(--amb)",fontFamily:"var(--mono)"}}>{left} left</span>
+              </div>
+              <div style={{width:"100%",height:6,borderRadius:6,background:"var(--line)",overflow:"hidden"}}>
+                <div style={{width:`${pct}%`,height:"100%",borderRadius:6,background:urgent?"var(--red)":"var(--grn)",transition:"width 1s"}}/>
+              </div>
+              <div style={{fontSize:10,color:"var(--mute)",marginTop:6,fontFamily:"var(--mono)"}}>{c.taken}/{c.total} verified</div>
+            </div>})}
+        </div>
+      </div>
+
+      {/* Social proof */}
+      <div className="au d4" style={{textAlign:"center"}}>
         <p style={{color:"var(--mute)",fontSize:12,fontFamily:"var(--mono)",letterSpacing:".06em",marginBottom:16}}>TRUSTED BY RICHMOND'S BEST</p>
         <div style={{display:"flex",justifyContent:"center",gap:28,flexWrap:"wrap"}}>{TRUCKS.filter(t=>t.plan==="premium").slice(0,5).map(t=><span key={t.id} style={{color:"var(--sub)",fontSize:13,fontFamily:"var(--sans)"}}>{t.img} {t.name}</span>)}</div>
       </div>
@@ -541,8 +607,43 @@ function MemberDash({go}){
   const[profile,setP]=useState({name:truck.name,cuisine:truck.cuisine,owner:truck.owner,phone:truck.phone,desc:truck.desc,price:truck.price,schedule:truck.schedule});
   const[menu,setMenu]=useState(truck.menu||[]);const[ni,setNi]=useState({name:"",price:"",desc:""});
   const[saved,setSaved]=useState(false);const[loc,setLoc]=useState({address:"",hours:"",special:""});
+  const[scanning,setScanning]=useState(false);const[scanPreview,setScanPreview]=useState(null);const[scanResults,setScanResults]=useState(null);const[scanError,setScanError]=useState(null);
+  const fileRef=useRef(null);
   const save=()=>{setSaved(true);setTimeout(()=>setSaved(false),2500)};
   const tabs=[{id:"profile",l:"🚚 Profile"},{id:"location",l:"📍 Location"},{id:"bookings",l:"📋 Bookings"},{id:"analytics",l:"📊 Analytics"}];
+
+  const handleMenuScan=async(file)=>{
+    if(!file)return;
+    setScanError(null);setScanResults(null);setScanning(true);
+    const reader=new FileReader();
+    reader.onload=async(ev)=>{
+      const dataUrl=ev.target.result;
+      setScanPreview(dataUrl);
+      const base64=dataUrl.split(",")[1];
+      const mediaType=file.type||"image/jpeg";
+      try{
+        const resp=await fetch("https://api.anthropic.com/v1/messages",{
+          method:"POST",headers:{"Content-Type":"application/json"},
+          body:JSON.stringify({
+            model:"claude-sonnet-4-20250514",max_tokens:1000,
+            system:"You extract menu items from food truck menu photos. Return ONLY valid JSON — no markdown, no backticks, no explanation. Return an array of objects with keys: name (string), price (number), desc (string, brief description or empty string). If you cannot read items clearly, return what you can. Example: [{\"name\":\"Brisket Tacos\",\"price\":14,\"desc\":\"Smoked brisket with slaw\"}]",
+            messages:[{role:"user",content:[
+              {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
+              {type:"text",text:"Extract all menu items with names, prices, and descriptions from this menu photo. Return ONLY a JSON array."}
+            ]}]
+          })
+        });
+        const data=await resp.json();
+        const text=data.content?.map(c=>c.text||"").join("")||"";
+        const clean=text.replace(/```json|```/g,"").trim();
+        const items=JSON.parse(clean);
+        if(Array.isArray(items)&&items.length>0){setScanResults(items)}
+        else{setScanError("Couldn't find menu items in this image. Try a clearer photo.")}
+      }catch(e){setScanError("Failed to read menu. Try a clearer, well-lit photo.")}
+      setScanning(false);
+    };
+    reader.readAsDataURL(file);
+  };
 
   return<div style={{minHeight:"100vh",background:"var(--bg)",fontFamily:"var(--sans)"}}>
     <div style={{background:"var(--card)",borderBottom:"1px solid var(--line)",padding:"12px 36px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
@@ -571,13 +672,63 @@ function MemberDash({go}){
           <Btn full onClick={save}>Save profile</Btn>
         </div>
         <div style={{background:"var(--card)",borderRadius:18,padding:30,border:"1.5px solid var(--line)"}}>
-          <h3 style={{fontFamily:"var(--serif)",fontSize:20,color:"var(--ink)",marginBottom:22}}>Menu ({menu.length})</h3>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:22}}>
+            <h3 style={{fontFamily:"var(--serif)",fontSize:20,color:"var(--ink)",margin:0}}>Menu ({menu.length})</h3>
+          </div>
+
+          {/* AI Menu Scanner */}
+          <div style={{background:"linear-gradient(135deg,var(--redL),var(--warm))",border:"1.5px dashed var(--red)",borderRadius:14,padding:20,marginBottom:20,textAlign:"center",cursor:"pointer",transition:"all .3s",position:"relative",overflow:"hidden"}} onClick={()=>fileRef.current?.click()}
+            onDragOver={e=>{e.preventDefault();e.currentTarget.style.borderColor="var(--redD)";e.currentTarget.style.background="rgba(229,77,46,.08)"}}
+            onDragLeave={e=>{e.currentTarget.style.borderColor="var(--red)";e.currentTarget.style.background="linear-gradient(135deg,var(--redL),var(--warm))"}}
+            onDrop={e=>{e.preventDefault();e.currentTarget.style.borderColor="var(--red)";e.currentTarget.style.background="linear-gradient(135deg,var(--redL),var(--warm))";const f=e.dataTransfer.files[0];if(f)handleMenuScan(f)}}>
+            <input ref={fileRef} type="file" accept="image/*" style={{display:"none"}} onChange={e=>{const f=e.target.files[0];if(f)handleMenuScan(f)}}/>
+            {scanning
+              ?<div style={{padding:12}}>
+                <div style={{width:28,height:28,border:"3px solid var(--red)",borderTopColor:"transparent",borderRadius:99,animation:"spin .8s linear infinite",margin:"0 auto 12px"}}/>
+                <div style={{fontWeight:600,color:"var(--red)",fontSize:14,fontFamily:"var(--sans)"}}>Reading your menu...</div>
+                <div style={{color:"var(--sub)",fontSize:12,marginTop:4}}>AI is extracting items from your photo</div>
+              </div>
+              :<div style={{padding:8}}>
+                <div style={{fontSize:28,marginBottom:8}}>📸</div>
+                <div style={{fontWeight:700,color:"var(--red)",fontSize:14,fontFamily:"var(--sans)"}}>Scan menu from photo</div>
+                <div style={{color:"var(--sub)",fontSize:12,marginTop:4,lineHeight:1.5}}>Drop a photo of your menu board or tap to upload.<br/>AI reads it and adds items instantly.</div>
+              </div>
+            }
+          </div>
+
+          {/* Scan Preview + Results */}
+          {scanPreview&&!scanning&&<div style={{marginBottom:16}}>
+            <div style={{borderRadius:10,overflow:"hidden",marginBottom:12,border:"1px solid var(--line)",maxHeight:160}}>
+              <img src={scanPreview} alt="Menu scan" style={{width:"100%",height:160,objectFit:"cover",display:"block"}}/>
+            </div>
+            {scanError&&<div style={{background:"rgba(229,77,46,.06)",border:"1px solid rgba(229,77,46,.1)",borderRadius:10,padding:"10px 14px",color:"var(--red)",fontSize:13,marginBottom:12}}>{scanError}</div>}
+            {scanResults&&<div>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                <span style={{fontSize:12,fontWeight:700,color:"var(--grn)",fontFamily:"var(--sans)"}}>✓ Found {scanResults.length} items</span>
+                <div style={{display:"flex",gap:6}}>
+                  <Btn sz="sm" onClick={()=>{setMenu([...menu,...scanResults]);setScanResults(null);setScanPreview(null)}}>Add all to menu</Btn>
+                  <Btn sz="sm" v="ghost" onClick={()=>{setScanResults(null);setScanPreview(null)}}>Dismiss</Btn>
+                </div>
+              </div>
+              <div style={{background:"var(--tint)",borderRadius:10,padding:12,maxHeight:200,overflowY:"auto"}}>
+                {scanResults.map((item,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:i<scanResults.length-1?"1px solid var(--line)":"none"}}>
+                  <div><div style={{fontWeight:600,fontSize:13,color:"var(--ink)"}}>{item.name}</div>{item.desc&&<div style={{color:"var(--mute)",fontSize:11,marginTop:1}}>{item.desc}</div>}</div>
+                  <div style={{display:"flex",alignItems:"center",gap:8}}>
+                    <span style={{color:"var(--red)",fontWeight:700,fontSize:13}}>${item.price}</span>
+                    <button onClick={()=>setScanResults(scanResults.filter((_,j)=>j!==i))} style={{color:"var(--mute)",fontSize:12,opacity:.6}}>✕</button>
+                  </div>
+                </div>)}
+              </div>
+            </div>}
+          </div>}
+
+          {/* Existing menu items */}
           {menu.map((m,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",padding:"10px 0",borderBottom:"1px solid var(--line)"}}>
             <div><div style={{fontWeight:600,fontSize:14,color:"var(--ink)"}}>{m.name}</div><div style={{color:"var(--mute)",fontSize:12,marginTop:2}}>{m.desc}</div></div>
             <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{color:"var(--red)",fontWeight:700}}>${m.price}</span><button onClick={()=>setMenu(menu.filter((_,j)=>j!==i))} style={{color:"var(--red)",opacity:.5,fontSize:14}}>✕</button></div>
           </div>)}
           <div style={{marginTop:18,padding:16,background:"var(--tint)",borderRadius:12}}>
-            <div style={{fontSize:11,fontWeight:600,marginBottom:8,letterSpacing:".06em",textTransform:"uppercase",color:"var(--ink)"}}>ADD ITEM</div>
+            <div style={{fontSize:11,fontWeight:600,marginBottom:8,letterSpacing:".06em",textTransform:"uppercase",color:"var(--ink)"}}>ADD MANUALLY</div>
             <div style={{display:"grid",gridTemplateColumns:"2fr 1fr",gap:8,marginBottom:8}}>
               <input value={ni.name} onChange={e=>setNi({...ni,name:e.target.value})} placeholder="Name" style={{padding:"9px 12px",borderRadius:8,border:"1px solid var(--line)",fontSize:13,background:"var(--card)"}}/>
               <input value={ni.price} onChange={e=>setNi({...ni,price:e.target.value})} placeholder="$" type="number" style={{padding:"9px 12px",borderRadius:8,border:"1px solid var(--line)",fontSize:13,background:"var(--card)"}}/>
@@ -692,7 +843,7 @@ function AdminDash({go}){
       {st.view==="dashboard"&&<div className="au">
         <h2 style={{fontSize:24,fontWeight:700,margin:"0 0 24px"}}>Command Center</h2>
         <div style={{background:"linear-gradient(135deg,rgba(229,77,46,.08),rgba(199,125,21,.03))",border:"1px solid rgba(229,77,46,.12)",borderRadius:16,padding:"22px 28px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontSize:10,color:"var(--amb)",fontWeight:600,letterSpacing:".12em",fontFamily:"var(--mono)"}}>MRR</div><div style={{fontSize:38,fontWeight:700,marginTop:4}}>${prem*10}<span style={{fontSize:16,color:"var(--adm-t)"}}>/mo</span></div></div>
+          <div><div style={{fontSize:10,color:"var(--amb)",fontWeight:600,letterSpacing:".12em",fontFamily:"var(--mono)"}}>MRR</div><div style={{fontSize:38,fontWeight:700,marginTop:4}}>${prem*49}<span style={{fontSize:16,color:"var(--adm-t)"}}>/mo</span></div></div>
           <span style={{color:"var(--grn)",fontSize:18,fontWeight:700}}>↑16.7%</span>
         </div>
         <div className="g4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
@@ -710,7 +861,7 @@ function AdminDash({go}){
         <h2 style={{fontSize:24,fontWeight:700,margin:"0 0 24px"}}>Trucks ({st.trucks.length})</h2>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>{st.trucks.map(t=><ACard key={t.id}>
           <div style={{display:"flex",gap:12}}><div style={{width:44,height:44,borderRadius:11,fontSize:22,background:"var(--adm-s)",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.img}</div>
-          <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:700,fontSize:14}}>{t.name}</span><ABadge color={t.plan==="premium"?"var(--amb)":"var(--adm-t)"}>{t.plan==="premium"?"★ $10":"FREE"}</ABadge></div>
+          <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:700,fontSize:14}}>{t.name}</span><ABadge color={t.plan==="premium"?"var(--amb)":"var(--adm-t)"}>{t.plan==="premium"?"★ $49":"FREE"}</ABadge></div>
           <div style={{color:"var(--adm-t)",fontSize:12,marginTop:2}}>{t.cuisine} · ★{t.rating}</div>
           <div style={{display:"flex",gap:5,marginTop:8}}><ABadge color={t.status==="active"?"var(--grn)":"#666"}>● {t.status}</ABadge>{t.verified&&<ABadge color="var(--blu)">✓</ABadge>}</div></div></div>
         </ACard>)}</div>
