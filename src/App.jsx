@@ -91,12 +91,12 @@ function Nav({go,route}){
 function HomePage({go}){
   return<div style={{paddingTop:54}}>
     {/* Hero */}
-    <section style={{padding:"clamp(48px,12vw,100px) 20px clamp(40px,8vw,60px)",textAlign:"center"}}>
+    <section style={{padding:"clamp(60px,14vw,120px) 20px clamp(48px,10vw,70px)",textAlign:"center"}}>
       <W style={{maxWidth:640,padding:0}}>
         <p className="ani" style={{fontSize:12,fontWeight:500,color:"var(--accent)",letterSpacing:".08em",marginBottom:16}}>RICHMOND, VIRGINIA</p>
-        <h1 className="ani d1" style={{fontSize:"clamp(28px,6vw,50px)",fontWeight:300,fontFamily:"var(--serif)",lineHeight:1.2,letterSpacing:"-.02em",margin:"0 0 16px"}}>The food truck booking network for <em style={{fontWeight:400,color:"var(--accent)"}}>Richmond</em>.</h1>
-        <p className="ani d2" style={{fontSize:"clamp(14px,2.5vw,16px)",color:"var(--sub)",lineHeight:1.7,maxWidth:420,margin:"0 auto 28px",fontWeight:300}}>Submit event requests. Get matched with verified vendors. Book directly — no middlemen, no spam.</p>
-        <div className="ani d3" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:320,margin:"0 auto"}}>
+        <h1 className="ani d1" style={{fontSize:"clamp(28px,6vw,50px)",fontWeight:300,fontFamily:"var(--serif)",lineHeight:1.2,letterSpacing:"-.02em",margin:"0 0 20px"}}>The food truck booking network for <em style={{fontWeight:400,color:"var(--accent)"}}>Richmond</em>.</h1>
+        <p className="ani d2" style={{fontSize:"clamp(14px,2.5vw,16px)",color:"var(--sub)",lineHeight:1.7,maxWidth:420,margin:"0 auto 32px",fontWeight:300}}>Submit event requests. Get matched with verified vendors. Book directly — no middlemen, no spam.</p>
+        <div className="ani d3" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:340,margin:"0 auto"}}>
           <Btn variant="accent" size="lg" full onClick={()=>go("/submit")}>Submit an Event</Btn>
           <Btn variant="outline" size="lg" full onClick={()=>go("/join")}>Join as a Vendor</Btn>
         </div>
@@ -116,15 +116,15 @@ function HomePage({go}){
     </div>
 
     {/* How It Works */}
-    <section style={{padding:"clamp(48px,8vw,80px) 20px"}}>
+    <section style={{padding:"clamp(56px,10vw,96px) 20px"}}>
       <W style={{padding:0}}>
         <p className="ani" style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:10}}>HOW IT WORKS</p>
-        <h2 className="ani d1" style={{fontSize:"clamp(24px,4vw,32px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:"clamp(28px,4vw,44px)"}}>Simple for hosts.<br/>Valuable for vendors.</h2>
+        <h2 className="ani d1" style={{fontSize:"clamp(24px,4vw,32px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:"clamp(32px,5vw,52px)"}}>Simple for hosts.<br/>Valuable for vendors.</h2>
         <div className="ani d2" style={{display:"flex",flexDirection:"column",gap:1,background:"var(--line)",borderRadius:12,overflow:"hidden"}}>
           {[["For Event Hosts","Tell us your date, location, headcount, and requirements. We match you with verified vendors.","Submit an Event \u2192","/submit"],
             ["For Vendors","Get listed for free. Receive qualified booking opportunities from hosts across Richmond.","Join the Network \u2192","/join"],
             ["Direct Booking","No platform fees. No middlemen. Hosts and vendors connect directly.","Learn More \u2192","/access"]
-          ].map(([t,d,c,l])=><div key={t} style={{background:"var(--card)",padding:"clamp(20px,3vw,32px)"}}>
+          ].map(([t,d,c,l])=><div key={t} style={{background:"var(--card)",padding:"clamp(24px,3.5vw,36px)"}}>
             <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>{t}</h3>
             <p style={{fontSize:13,color:"var(--sub)",lineHeight:1.7,marginBottom:14,fontWeight:300}}>{d}</p>
             <span onClick={()=>go(l)} style={{fontSize:13,fontWeight:500,color:"var(--accent)",cursor:"pointer"}}>{c}</span>
@@ -134,11 +134,11 @@ function HomePage({go}){
     </section>
 
     {/* Status */}
-    <section style={{padding:"clamp(36px,6vw,56px) 20px",borderTop:"1px solid var(--line)"}}>
+    <section style={{padding:"clamp(48px,8vw,68px) 20px",borderTop:"1px solid var(--line)"}}>
       <W style={{padding:0}}>
         <p style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:10}}>CURRENT STATUS</p>
-        <h2 style={{fontSize:"clamp(22px,3.5vw,26px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:20}}>Now accepting</h2>
-        <div style={{display:"flex",gap:"clamp(20px,4vw,40px)",flexWrap:"wrap"}}>
+        <h2 style={{fontSize:"clamp(22px,3.5vw,26px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:24}}>Now accepting</h2>
+        <div style={{display:"flex",gap:"clamp(16px,3vw,36px) clamp(24px,5vw,44px)",flexWrap:"wrap"}}>
           {[["Event submissions","Active"],["Vendor applications","Active"],["Verified Vendor waitlist","Open"]].map(([l,s])=>
             <div key={l} style={{display:"flex",alignItems:"center",gap:8}}>
               <div style={{width:6,height:6,borderRadius:99,background:s==="Active"?"#2D8C3C":"var(--accent)",flexShrink:0}}/>
@@ -150,7 +150,7 @@ function HomePage({go}){
     </section>
 
     {/* Verified */}
-    <section style={{padding:"clamp(48px,8vw,80px) 20px",background:"var(--ink)",position:"relative",overflow:"hidden"}}>
+    <section style={{padding:"clamp(60px,10vw,100px) 20px",background:"var(--ink)",position:"relative",overflow:"hidden"}}>
       <div style={{position:"absolute",top:"-20%",right:"-10%",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(212,72,44,.07),transparent 60%)",filter:"blur(40px)"}}/>
       <W style={{maxWidth:560,textAlign:"center",position:"relative",padding:0}}>
         <p className="ani" style={{fontSize:11,fontWeight:500,color:"rgba(255,255,255,.3)",letterSpacing:".08em",marginBottom:12}}>VERIFIED VENDOR ACCESS</p>
@@ -162,11 +162,11 @@ function HomePage({go}){
     </section>
 
     {/* CTA */}
-    <section style={{padding:"clamp(48px,8vw,72px) 20px",textAlign:"center"}}>
+    <section style={{padding:"clamp(56px,10vw,88px) 20px",textAlign:"center"}}>
       <W style={{maxWidth:460,padding:0}}>
         <h2 className="ani" style={{fontSize:"clamp(22px,4vw,26px)",fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 12px"}}>Richmond's food truck scene deserves better infrastructure.</h2>
         <p className="ani d1" style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300,marginBottom:24}}>We're building it. Get in early.</p>
-        <div className="ani d2" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:280,margin:"0 auto"}}>
+        <div className="ani d2" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:320,margin:"0 auto"}}>
           <Btn variant="accent" full onClick={()=>go("/submit")}>Submit an Event</Btn>
           <Btn variant="outline" full onClick={()=>go("/join")}>Join as a Vendor</Btn>
         </div>
@@ -174,7 +174,7 @@ function HomePage({go}){
     </section>
 
     {/* Numbers */}
-    <section style={{padding:"clamp(36px,6vw,56px) 20px",borderTop:"1px solid var(--line)"}}>
+    <section style={{padding:"clamp(48px,8vw,64px) 20px",borderTop:"1px solid var(--line)"}}>
       <W style={{display:"flex",justifyContent:"center",gap:"clamp(28px,6vw,64px)",padding:0,flexWrap:"wrap"}}>
         {[["4,100+","Network members"],["$800–2,500","Avg. booking value"],["10","Verified slots"]].map(([v,l])=>
           <div key={l} style={{textAlign:"center"}}>
@@ -189,7 +189,7 @@ function HomePage({go}){
 
 function FormPage({go,title,subtitle,children}){
   return<div style={{paddingTop:54}}>
-    <section style={{padding:"clamp(24px,4vw,48px) 20px clamp(40px,6vw,80px)"}}>
+    <section style={{padding:"clamp(32px,5vw,56px) 20px clamp(48px,8vw,80px)"}}>
       <W style={{maxWidth:540,padding:0}}>
         <div className="ani" style={{marginBottom:24}}>
           <span onClick={()=>go("/")} style={{fontSize:13,color:"var(--mute)",cursor:"pointer",display:"inline-block",marginBottom:10}}>{"\u2190"} Back</span>
@@ -219,7 +219,7 @@ function SubmitEvent({go}){
 
   return<FormPage go={go} title="Submit an Event" subtitle={`Step ${step} of 3`}>
     <div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)"}}/>)}</div>
-    <div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(16px,3vw,28px)"}}>
+    <div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}>
       {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Event Details</h3>
         <div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Event Type</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{types.map(t=><Chip key={t} active={f.type===t} onClick={()=>u("type",t)}>{t}</Chip>)}</div></div>
         <Input label="Date" value={f.date} onChange={e=>u("date",e.target.value)} type="date"/>
@@ -263,7 +263,7 @@ function JoinVendor({go}){
 
   return<FormPage go={go} title="Join as a Vendor" subtitle={`Step ${step} of 3 — Free to join`}>
     <div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)"}}/>)}</div>
-    <div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(16px,3vw,28px)"}}>
+    <div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}>
       {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Business Info</h3>
         <Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck name"/>
         <div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cuisines.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div>
@@ -297,7 +297,7 @@ function AccessPage({go}){
   return<FormPage go={go} title="Verified Vendor Access" subtitle="Priority access to booking requests and protected category placement.">
     <div className="ani d1" style={{display:"flex",flexDirection:"column",gap:1,background:"var(--line)",borderRadius:10,overflow:"hidden",marginBottom:32}}>
       {[["Priority Placement","Appear first to event hosts."],["Direct Lead Routing","Requests matched to your cuisine."],["Category Protection","Limited slots. Competition capped."],["Featured Visibility","Prominent in directory and matching."]].map(([t,d])=>
-        <div key={t} style={{background:"var(--card)",padding:"clamp(14px,2.5vw,24px)"}}>
+        <div key={t} style={{background:"var(--card)",padding:"clamp(18px,3vw,28px)"}}>
           <h3 style={{fontSize:13,fontWeight:600,marginBottom:3}}>{t}</h3>
           <p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300}}>{d}</p>
         </div>
