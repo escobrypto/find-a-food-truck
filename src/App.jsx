@@ -176,7 +176,7 @@ function Hero({go}){
             4,100+ locals · Growing daily · Richmond, VA
           </p>
           <p className="au d2" style={{fontSize:17,color:"rgba(255,255,255,.3)",fontFamily:"var(--body)",lineHeight:1.8,maxWidth:420,margin:"0 0 36px",fontWeight:300}}>
-            Browse menus. Book catering. Track locations. The operating system for Richmond's food truck scene.
+            Browse menus. Book catering. Track locations. Richmond's food truck scene, finally organized.
           </p>
           <div className="au d3 hero-cta" style={{display:"flex",gap:12}}>
             <Btn sz="lg" onClick={()=>go("/book")}>Book a truck</Btn>
@@ -213,17 +213,28 @@ function Hero({go}){
   </section>
 
   {/* Value prop bar */}
-  <div style={{background:"var(--bg)",padding:"36px 40px",borderBottom:"1px solid var(--line)"}}>
-    <div style={{maxWidth:1240,margin:"0 auto",display:"flex",justifyContent:"center",gap:48,flexWrap:"wrap"}}>
-      {[
-        {ic:"🔒",t:"Category-protected spots",d:"1–2 vendors per cuisine. Your competition is capped."},
-        {ic:"📬",t:"Direct lead routing",d:"Booking requests matched to your cuisine, sent to your inbox."},
-        {ic:"⚡",t:"Priority everything",d:"First in search. First to respond. First to get booked."},
-      ].map(p=><div key={p.t} style={{flex:"1 1 280px",maxWidth:340,fontFamily:"var(--sans)"}}>
-        <div style={{fontSize:22,marginBottom:8}}>{p.ic}</div>
-        <div style={{fontSize:14,fontWeight:700,color:"var(--ink)",marginBottom:4}}>{p.t}</div>
-        <div style={{fontSize:13,color:"var(--sub)",lineHeight:1.5,fontFamily:"var(--body)",fontWeight:300}}>{p.d}</div>
-      </div>)}
+  <div style={{background:"var(--bg)",padding:"44px 40px",borderBottom:"1px solid var(--line)"}}>
+    <div style={{maxWidth:1240,margin:"0 auto"}}>
+      <div style={{display:"flex",justifyContent:"center",gap:48,flexWrap:"wrap",marginBottom:36}}>
+        {[
+          {ic:"🔒",t:"Category-protected spots",d:"1–2 vendors per cuisine. Your competition is capped."},
+          {ic:"📬",t:"Direct lead routing",d:"Booking requests matched to your cuisine, sent to your inbox."},
+          {ic:"⚡",t:"Priority everything",d:"First in search. First to respond. First to get booked."},
+        ].map(p=><div key={p.t} style={{flex:"1 1 280px",maxWidth:340,fontFamily:"var(--sans)"}}>
+          <div style={{fontSize:22,marginBottom:8}}>{p.ic}</div>
+          <div style={{fontSize:14,fontWeight:700,color:"var(--ink)",marginBottom:4}}>{p.t}</div>
+          <div style={{fontSize:13,color:"var(--sub)",lineHeight:1.5,fontFamily:"var(--body)",fontWeight:300}}>{p.d}</div>
+        </div>)}
+      </div>
+      {/* Stats strip */}
+      <div style={{display:"flex",justifyContent:"center",gap:40,flexWrap:"wrap",paddingTop:28,borderTop:"1px solid var(--line)"}}>
+        {[["4,100+","Community members"],["$800–$2,500","Avg booking value"],["10","Founding Partner spots"],["< 12hrs","Target response time"]].map(([v,l])=>
+          <div key={l} style={{textAlign:"center"}}>
+            <div style={{fontSize:22,fontWeight:800,color:"var(--ink)",fontFamily:"var(--sans)"}}>{v}</div>
+            <div style={{fontSize:10,color:"var(--mute)",marginTop:2,fontFamily:"var(--mono)",letterSpacing:".04em"}}>{l}</div>
+          </div>
+        )}
+      </div>
     </div>
   </div>
 
@@ -252,7 +263,7 @@ function Hero({go}){
           <div style={{position:"absolute",top:"-20%",right:"-10%",width:200,height:200,borderRadius:"50%",background:"radial-gradient(circle,rgba(229,77,46,.06),transparent)",filter:"blur(30px)"}}/>
           <div style={{position:"relative"}}>
             <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}><span style={{fontSize:24}}>🚚</span><h3 style={{fontFamily:"var(--sans)",fontWeight:700,fontSize:16,color:"#fff",margin:0}}>For Truck Vendors</h3></div>
-            {[["1","Create your profile","Add your menu, photos, cuisine type, and service area."],["2","Get verified","Apply for Verified Vendor status. Badge + priority + leads."],["3","Receive booking leads","Hosts find you. Private leads hit your inbox. You respond first."],["4","Book events & grow","Land corporate gigs, weddings, festivals. Build your track record."]].map(([n,t,d])=>
+            {[["1","Get your free listing","Add your menu, photos, cuisine type. Use our AI menu scanner — just upload a photo."],["2","Start getting found","Hosts and customers discover you in the directory. Respond to booking requests."],["3","Apply for Founding Partner","Join the waitlist for $99/mo — category protection, lead routing, priority placement."],["4","Grow your business","Land corporate gigs, weddings, festivals. Build your reputation on the platform."]].map(([n,t,d])=>
               <div key={n} style={{display:"flex",gap:14,marginBottom:18}}>
                 <div style={{width:32,height:32,borderRadius:10,background:"rgba(229,77,46,.1)",color:"var(--red)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,fontFamily:"var(--sans)",flexShrink:0}}>{n}</div>
                 <div><div style={{fontWeight:600,fontSize:14,color:"#fff",fontFamily:"var(--sans)"}}>{t}</div><div style={{color:"rgba(255,255,255,.3)",fontSize:13,marginTop:2,lineHeight:1.5,fontFamily:"var(--body)",fontWeight:300}}>{d}</div></div>
@@ -331,7 +342,12 @@ function TruckFinder({go}){
               </div>
             </div>
           </div>)}
-          {list.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:80}}><div style={{fontSize:48,opacity:.3,marginBottom:12}}>🔍</div><div style={{fontSize:18,fontWeight:600,color:"var(--ink)",fontFamily:"var(--sans)"}}>No trucks found</div></div>}
+          {list.length===0&&<div style={{gridColumn:"1/-1",textAlign:"center",padding:"60px 20px"}}>
+            <div style={{fontSize:48,opacity:.3,marginBottom:16}}>🚚</div>
+            <h3 style={{fontSize:22,fontFamily:"var(--serif)",color:"var(--ink)",marginBottom:8}}>The directory is filling up</h3>
+            <p style={{color:"var(--sub)",fontSize:15,fontFamily:"var(--body)",fontWeight:300,maxWidth:400,margin:"0 auto 24px",lineHeight:1.7}}>Richmond's food trucks are creating their profiles now. Get listed for free so hosts and customers can find you.</p>
+            <div style={{display:"flex",gap:10,justifyContent:"center"}}><Btn onClick={()=>go("/member")}>Create your listing</Btn><Btn v="outline" onClick={()=>go("/pricing")}>Founding Partner info</Btn></div>
+          </div>}
         </div>
 
         {sel&&det&&<div className="asr">
@@ -426,7 +442,7 @@ function BookingPage({go}){
     <div className="asc" style={{textAlign:"center",maxWidth:440}}>
       <div style={{width:80,height:80,borderRadius:"50%",background:"var(--redL)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:40,margin:"0 auto 28px"}}>🎉</div>
       <h2 style={{fontSize:36,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 14px"}}>Request sent</h2>
-      <p style={{color:"var(--sub)",fontSize:16,lineHeight:1.75,fontFamily:"var(--body)",fontWeight:300}}>Premium trucks are notified first. We'll connect you with the perfect vendors.</p>
+      <p style={{color:"var(--sub)",fontSize:16,lineHeight:1.75,fontFamily:"var(--body)",fontWeight:300}}>Verified vendors will be notified. Expect responses within 12 hours as our Founding Partners come online.</p>
       <Btn style={{marginTop:32}} onClick={()=>go("/trucks")}>Browse trucks</Btn>
     </div>
   </section>;
@@ -469,12 +485,11 @@ function BookingPage({go}){
 // ─── Pricing ─────────────────────────────────────────────────────────────
 function PricingPage({go}){
   const Ck=({on=true})=><span style={{color:on?"var(--grn)":"var(--line)",fontWeight:700,fontSize:14}}>{on?"✓":"—"}</span>;
-  const cats=[{name:"BBQ & Smoked Meats",max:2,taken:1},{name:"Mexican / Latin",max:2,taken:1},{name:"Southern / Soul Food",max:2,taken:1},{name:"Asian Fusion",max:2,taken:0},{name:"Breakfast / Brunch",max:1,taken:1},{name:"Beverages / Dessert",max:1,taken:0}];
-  const totalSpots=10,taken=7;const left=totalSpots-taken;
+  const cats=[{name:"BBQ & Smoked Meats",max:2,taken:0},{name:"Mexican / Latin",max:2,taken:0},{name:"Southern / Soul Food",max:2,taken:0},{name:"Asian Fusion",max:2,taken:0},{name:"Breakfast / Brunch",max:1,taken:0},{name:"Beverages / Dessert",max:1,taken:0}];
+  const[wl,setWl]=useState(false);const[wlForm,setWlForm]=useState({name:"",truck:"",cuisine:"",phone:"",email:"",why:""});const[wlSent,setWlSent]=useState(false);
   return<section style={{minHeight:"100vh",background:"var(--bg)",padding:"120px 40px 80px"}}>
     <div style={{maxWidth:1060,margin:"0 auto"}}>
 
-      {/* Header */}
       <div className="au" style={{textAlign:"center",marginBottom:20}}>
         <span style={{display:"inline-block",background:"var(--ink)",color:"#fff",fontSize:10,fontWeight:700,padding:"6px 18px",borderRadius:99,letterSpacing:".12em",fontFamily:"var(--sans)",marginBottom:20}}>FOUNDING COHORT · LIMITED TO 10 VENDORS</span>
         <h2 style={{fontSize:48,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 14px"}}>You're not paying for exposure.<br/><em style={{color:"var(--red)"}}>You're paying for controlled competition.</em></h2>
@@ -483,31 +498,31 @@ function PricingPage({go}){
 
       {/* ROI bar */}
       <div className="au d1" style={{background:"var(--ink)",borderRadius:18,padding:"28px 36px",marginBottom:44,display:"flex",justifyContent:"center",gap:56,flexWrap:"wrap",textAlign:"center"}}>
-        {[["$800–$2,500+","Per booking"],["1 booking","= 10 months of membership"],["3–5","Leads per partner/week (target)"],["10","Total partner spots"]].map(([v,l])=>
+        {[["$800–$2,500+","Per booking"],["1 booking","= 10 months of membership"],["4,100+","Members in the community"],["10","Total partner spots"]].map(([v,l])=>
           <div key={l}><div style={{fontSize:24,fontWeight:800,color:"#fff",fontFamily:"var(--sans)"}}>{v}</div><div style={{fontSize:11,color:"rgba(255,255,255,.3)",marginTop:4,fontFamily:"var(--mono)"}}>{l}</div></div>
         )}
       </div>
 
-      {/* Main 2-column: Free vs Founding Partner */}
+      {/* 2-column: Free vs Founding Partner */}
       <div className="au d2 g2" style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:20,marginBottom:48}}>
 
-        {/* Free — minimal column */}
+        {/* Free */}
         <div style={{background:"var(--card)",borderRadius:20,padding:32,border:"1.5px solid var(--line)",fontFamily:"var(--sans)",display:"flex",flexDirection:"column"}}>
           <div style={{fontSize:10,fontWeight:700,color:"var(--mute)",letterSpacing:".12em",marginBottom:8}}>BASIC LISTING</div>
           <div style={{fontSize:36,fontWeight:800,color:"var(--ink)"}}>$0</div>
-          <p style={{color:"var(--sub)",fontSize:12,margin:"6px 0 24px",fontWeight:300,lineHeight:1.5}}>Directory only. No leads. No priority.</p>
+          <p style={{color:"var(--sub)",fontSize:12,margin:"6px 0 24px",fontWeight:300,lineHeight:1.5}}>Get listed in the directory. Free forever.</p>
           <div style={{flex:1}}>
-            {["Directory listing","Respond to public requests","Customer reviews","Community access"].map(f=><div key={f} style={{display:"flex",gap:8,padding:"8px 0",borderBottom:"1px solid var(--line)",fontSize:12}}><Ck/><span style={{color:"var(--ink)"}}>{f}</span></div>)}
+            {["Directory listing","Respond to public requests","AI menu scanner","Customer reviews","Community access"].map(f=><div key={f} style={{display:"flex",gap:8,padding:"8px 0",borderBottom:"1px solid var(--line)",fontSize:12}}><Ck/><span style={{color:"var(--ink)"}}>{f}</span></div>)}
             {["Lead routing","Priority placement","Promotion","Featured listing","Category protection","Event early access"].map(f=><div key={f} style={{display:"flex",gap:8,padding:"8px 0",borderBottom:"1px solid var(--line)",fontSize:12}}><Ck on={false}/><span style={{color:"var(--mute)",textDecoration:"line-through",textDecorationColor:"var(--line)"}}>{f}</span></div>)}
           </div>
-          <Btn v="soft" full sz="sm" style={{marginTop:20}} onClick={()=>go("/member")}>Get listed</Btn>
+          <Btn v="soft" full sz="sm" style={{marginTop:20}} onClick={()=>go("/member")}>Get listed free</Btn>
         </div>
 
-        {/* Founding Vendor Partner — hero */}
+        {/* Founding Partner — Coming Soon + Waitlist */}
         <div style={{background:"var(--card)",borderRadius:22,padding:44,border:"2.5px solid var(--red)",position:"relative",boxShadow:"0 24px 80px rgba(229,77,46,.1)",fontFamily:"var(--sans)"}}>
-          <div style={{position:"absolute",top:-16,left:"50%",transform:"translateX(-50%)",background:"var(--red)",color:"#fff",padding:"8px 28px",borderRadius:99,fontSize:11,fontWeight:700,letterSpacing:".08em",whiteSpace:"nowrap"}}>FOUNDING COHORT — {left} OF {totalSpots} SPOTS LEFT</div>
+          <div style={{position:"absolute",top:-16,left:"50%",transform:"translateX(-50%)",background:"var(--red)",color:"#fff",padding:"8px 28px",borderRadius:99,fontSize:11,fontWeight:700,letterSpacing:".08em",whiteSpace:"nowrap"}}>COMING SOON — JOIN THE WAITLIST</div>
 
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:36}}>
+          {!wl&&!wlSent&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:36}}>
             {/* Left — pricing + scarcity */}
             <div>
               <div style={{fontSize:10,fontWeight:700,color:"var(--red)",letterSpacing:".14em",marginBottom:10}}>FOUNDING VENDOR PARTNER</div>
@@ -517,33 +532,33 @@ function PricingPage({go}){
               </div>
               <p style={{color:"var(--sub)",fontSize:13,margin:"6px 0 0",fontWeight:300,lineHeight:1.6}}>Rate locked for life. After founding cohort fills, new partners enter at <strong style={{color:"var(--ink)"}}>$149+/mo</strong>.</p>
 
-              {/* Cohort counter */}
+              {/* Cohort counter — all spots open */}
               <div style={{marginTop:24,background:"var(--tint)",borderRadius:14,padding:18}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
                   <span style={{fontSize:12,fontWeight:700,color:"var(--ink)"}}>Founding Cohort</span>
-                  <span style={{fontSize:12,fontWeight:800,color:"var(--red)",fontFamily:"var(--mono)"}}>{taken}/{totalSpots}</span>
+                  <span style={{fontSize:12,fontWeight:800,color:"var(--grn)",fontFamily:"var(--mono)"}}>10 spots</span>
                 </div>
                 <div style={{width:"100%",height:8,borderRadius:8,background:"var(--line)",overflow:"hidden"}}>
-                  <div style={{width:`${(taken/totalSpots)*100}%`,height:"100%",borderRadius:8,background:"var(--red)",transition:"width 1s"}}/>
+                  <div style={{width:"0%",height:"100%",borderRadius:8,background:"var(--red)",transition:"width 1s"}}/>
                 </div>
                 <div style={{display:"flex",justifyContent:"space-between",marginTop:8}}>
-                  <span style={{fontSize:10,color:"var(--mute)",fontFamily:"var(--mono)"}}>{left} spots remaining</span>
-                  <span style={{fontSize:10,color:"var(--red)",fontWeight:600}}>Waitlist after full</span>
+                  <span style={{fontSize:10,color:"var(--mute)",fontFamily:"var(--mono)"}}>Applications open</span>
+                  <span style={{fontSize:10,color:"var(--grn)",fontWeight:600}}>Launching soon</span>
                 </div>
               </div>
 
               {/* Category protection */}
               <div style={{marginTop:20}}>
                 <div style={{fontSize:10,fontWeight:700,color:"var(--ink)",letterSpacing:".1em",marginBottom:10}}>CATEGORY PROTECTION (1–2 PER CUISINE)</div>
-                {cats.map(c=>{const full=c.taken>=c.max;return<div key={c.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid var(--line)"}}>
-                  <span style={{fontSize:12,color:full?"var(--mute)":"var(--ink)",fontWeight:full?400:500}}>{c.name}</span>
-                  <span style={{fontSize:10,fontWeight:700,fontFamily:"var(--mono)",color:full?"var(--red)":c.taken>0?"var(--amb)":"var(--grn)"}}>{full?"FULL":c.taken+"/"+c.max}</span>
-                </div>})}
+                {cats.map(c=><div key={c.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid var(--line)"}}>
+                  <span style={{fontSize:12,color:"var(--ink)",fontWeight:500}}>{c.name}</span>
+                  <span style={{fontSize:10,fontWeight:700,fontFamily:"var(--mono)",color:"var(--grn)"}}>OPEN</span>
+                </div>)}
                 <p style={{fontSize:10,color:"var(--sub)",marginTop:10,lineHeight:1.5,fontStyle:"italic"}}>When your category is full, no competing truck can join. Your booking volume is protected.</p>
               </div>
             </div>
 
-            {/* Right — features */}
+            {/* Right — features + waitlist CTA */}
             <div>
               <div style={{fontSize:10,fontWeight:700,color:"var(--ink)",letterSpacing:".1em",marginBottom:14}}>WHAT FOUNDING PARTNERS GET</div>
               {[
@@ -555,14 +570,54 @@ function PricingPage({go}){
                 ["📣","Weekly promotion","Featured to 4,100+ members. Not buried — promoted."],
                 ["🎪","First access to events","See and apply to events before anyone else."],
                 ["📊","Booking analytics","Track views, leads, and conversion rate."],
-              ].map(([ic,t,d])=><div key={t} style={{display:"flex",gap:12,marginBottom:16}}>
+              ].map(([ic,t,d])=><div key={t} style={{display:"flex",gap:12,marginBottom:14}}>
                 <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{ic}</span>
                 <div><div style={{fontWeight:700,fontSize:13,color:"var(--ink)"}}>{t}</div><div style={{color:"var(--sub)",fontSize:12,marginTop:1,lineHeight:1.4,fontWeight:300}}>{d}</div></div>
               </div>)}
-              <Btn full sz="lg" style={{marginTop:12}} onClick={()=>go("/member")}>Apply for Founding Partner</Btn>
-              <p style={{color:"var(--mute)",fontSize:10,textAlign:"center",marginTop:10}}>$99/mo locked for life · Cancel anytime · Waitlist after 10</p>
+              <Btn full sz="lg" style={{marginTop:12}} onClick={()=>setWl(true)}>Join the Waitlist</Btn>
+              <p style={{color:"var(--mute)",fontSize:10,textAlign:"center",marginTop:10}}>$99/mo locked for life · Cancel anytime · First 10 only</p>
             </div>
-          </div>
+          </div>}
+
+          {/* Waitlist Application Form */}
+          {wl&&!wlSent&&<div>
+            <div style={{textAlign:"center",marginBottom:28}}>
+              <div style={{fontSize:28,marginBottom:8}}>🏅</div>
+              <h3 style={{fontFamily:"var(--serif)",fontSize:24,color:"var(--ink)",margin:"0 0 6px"}}>Founding Partner Application</h3>
+              <p style={{color:"var(--sub)",fontSize:14,fontFamily:"var(--body)",fontWeight:300}}>Tell us about your truck. We review every application and notify accepted partners when we launch.</p>
+            </div>
+            <div style={{maxWidth:520,margin:"0 auto"}}>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                <Input label="Your name" value={wlForm.name} onChange={e=>setWlForm({...wlForm,name:e.target.value})} placeholder="Full name"/>
+                <Input label="Truck name" value={wlForm.truck} onChange={e=>setWlForm({...wlForm,truck:e.target.value})} placeholder="Your food truck"/>
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:12}}>
+                <Input label="Email" value={wlForm.email} onChange={e=>setWlForm({...wlForm,email:e.target.value})} placeholder="you@email.com"/>
+                <Input label="Phone" value={wlForm.phone} onChange={e=>setWlForm({...wlForm,phone:e.target.value})} placeholder="(804) 555-0000"/>
+              </div>
+              <div style={{marginBottom:12}}>
+                <label style={{display:"block",fontSize:12,fontWeight:600,color:"var(--ink)",marginBottom:8,fontFamily:"var(--sans)",letterSpacing:".04em",textTransform:"uppercase"}}>Cuisine category</label>
+                <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cats.map(c=><Pill key={c.name} active={wlForm.cuisine===c.name} onClick={()=>setWlForm({...wlForm,cuisine:c.name})}>{c.name}</Pill>)}</div>
+              </div>
+              <Input label="Why do you want to be a Founding Partner?" value={wlForm.why} onChange={e=>setWlForm({...wlForm,why:e.target.value})} placeholder="Tell us about your truck, how long you've been operating, what kind of events you want..." textarea rows={4}/>
+              <div style={{display:"flex",gap:10,marginTop:16}}>
+                <Btn full sz="lg" onClick={()=>{if(wlForm.name&&wlForm.truck&&wlForm.email&&wlForm.cuisine){setWlSent(true)}}}>Submit Application</Btn>
+                <Btn v="ghost" sz="lg" onClick={()=>setWl(false)}>Back</Btn>
+              </div>
+            </div>
+          </div>}
+
+          {/* Waitlist Confirmation */}
+          {wlSent&&<div style={{textAlign:"center",padding:"60px 20px"}}>
+            <div style={{fontSize:48,marginBottom:16}}>✓</div>
+            <h3 style={{fontFamily:"var(--serif)",fontSize:28,color:"var(--ink)",margin:"0 0 10px"}}>You're on the list.</h3>
+            <p style={{color:"var(--sub)",fontSize:16,fontFamily:"var(--body)",fontWeight:300,maxWidth:420,margin:"0 auto",lineHeight:1.7}}>We've received your application for the <strong style={{color:"var(--ink)"}}>Founding Partner</strong> program. We'll review it and reach out when we're ready to launch.</p>
+            <div style={{marginTop:28,padding:20,background:"var(--tint)",borderRadius:14,display:"inline-block"}}>
+              <div style={{fontSize:12,color:"var(--sub)",fontFamily:"var(--sans)"}}><strong style={{color:"var(--ink)"}}>{wlForm.truck}</strong> · {wlForm.cuisine}</div>
+              <div style={{fontSize:11,color:"var(--mute)",marginTop:4,fontFamily:"var(--mono)"}}>{wlForm.email}</div>
+            </div>
+            <p style={{color:"var(--mute)",fontSize:12,marginTop:20}}>In the meantime, <button onClick={()=>go("/member")} style={{color:"var(--red)",fontWeight:600,textDecoration:"underline",background:"none",border:"none",cursor:"pointer",fontSize:12}}>get your free listing set up</button> so you're ready to go on day one.</p>
+          </div>}
         </div>
       </div>
 
@@ -587,7 +642,7 @@ function PricingPage({go}){
           <span style={{fontSize:11,color:"var(--sub)",fontFamily:"var(--sans)"}}>After the founding cohort: new partners enter at</span>
           <span style={{fontSize:14,fontWeight:800,color:"var(--ink)",fontFamily:"var(--sans)"}}>$149+/mo</span>
         </div>
-        <p style={{color:"var(--mute)",fontSize:12,marginTop:12,fontFamily:"var(--sans)"}}>Lock in $99 now. This rate will never be offered again.</p>
+        <p style={{color:"var(--mute)",fontSize:12,marginTop:12,fontFamily:"var(--sans)"}}>Get on the waitlist now. Lock in $99 before it's gone.</p>
       </div>
     </div>
   </section>;
@@ -634,7 +689,8 @@ function Footer({go}){
     <div className="foot-grid" style={{maxWidth:1240,margin:"0 auto",display:"grid",gridTemplateColumns:"2.5fr 1fr 1fr 1fr",gap:44}}>
       <div>
         <div style={{fontFamily:"var(--serif)",fontSize:20,color:"#fff",marginBottom:14}}><em>find a</em> <span style={{color:"var(--red)"}}>food truck</span></div>
-        <p style={{color:"rgba(255,255,255,.25)",fontSize:14,lineHeight:1.75,maxWidth:280,fontFamily:"var(--body)",fontWeight:300}}>Richmond's food truck community. Connecting trucks, events, and hungry customers since 2026.</p>
+        <p style={{color:"rgba(255,255,255,.25)",fontSize:14,lineHeight:1.75,maxWidth:280,fontFamily:"var(--body)",fontWeight:300}}>Richmond's food truck marketplace. Browse, book, and grow — all in one place.</p>
+        <p style={{color:"rgba(255,255,255,.12)",fontSize:11,marginTop:12,fontFamily:"var(--mono)"}}>Built by Laurence Ash LLC</p>
       </div>
       {[["DISCOVER",[["Find Trucks","/trucks"],["Events","/events"],["Book a Truck","/book"]]],["VENDORS",[["Pricing","/pricing"],["Login","/member"],["About","/about"]]],["CONNECT",[["Facebook","#"],["Instagram","#"],["info@faftrva.com","#"]]]].map(([t,items])=>
         <div key={t}><h4 style={{color:"rgba(255,255,255,.3)",fontSize:10,fontWeight:600,letterSpacing:".15em",marginBottom:18,fontFamily:"var(--mono)"}}>{t}</h4>
@@ -986,7 +1042,20 @@ export default function App(){
   if(pub)return<div style={{fontFamily:"var(--sans)"}}>
     <style>{G}</style><div className="grain"/>
     <Nav go={go} route={route}/>
-    {route==="/"&&<><Hero go={go}/><Ticker/><Footer go={go}/></>}
+    {route==="/"&&<><Hero go={go}/>
+      {/* Final CTA */}
+      <div style={{background:"var(--ink)",padding:"72px 40px",textAlign:"center",position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-40%",left:"50%",transform:"translateX(-50%)",width:600,height:600,borderRadius:"50%",background:"radial-gradient(circle,rgba(229,77,46,.06),transparent)",filter:"blur(60px)"}}/>
+        <div style={{position:"relative",maxWidth:560,margin:"0 auto"}}>
+          <h2 style={{fontSize:36,fontFamily:"var(--serif)",color:"#fff",margin:"0 0 14px"}}>Ready to get on the map?</h2>
+          <p style={{fontSize:16,color:"rgba(255,255,255,.35)",fontFamily:"var(--body)",fontWeight:300,lineHeight:1.75,marginBottom:32}}>Free listings are open now. Set up your profile in 2 minutes — add your truck, scan your menu, and start getting found by hosts and customers across Richmond.</p>
+          <div style={{display:"flex",gap:12,justifyContent:"center"}}>
+            <Btn sz="lg" onClick={()=>go("/member")}>Create your free listing</Btn>
+            <Btn v="ghost" sz="lg" onClick={()=>go("/pricing")} style={{color:"rgba(255,255,255,.4)",border:"1px solid rgba(255,255,255,.08)"}}>Founding Partner waitlist →</Btn>
+          </div>
+        </div>
+      </div>
+      <Ticker/><Footer go={go}/></>}
     {route==="/trucks"&&<><TruckFinder go={go}/><Footer go={go}/></>}
     {route==="/events"&&<><EventsPage go={go}/><Footer go={go}/></>}
     {route==="/book"&&<><BookingPage go={go}/><Footer go={go}/></>}
