@@ -186,34 +186,41 @@ function Nav({go,route}){
 }
 
 function Hero({go}){
-  return<section style={{background:"var(--ink)",minHeight:"100vh",position:"relative",overflow:"hidden",display:"flex",alignItems:"center"}}>
+  return<><section style={{background:"var(--ink)",minHeight:"100vh",position:"relative",overflow:"hidden",display:"flex",alignItems:"center"}}>
     {/* Ambient */}
     <div style={{position:"absolute",top:"-25%",right:"-8%",width:700,height:700,borderRadius:"50%",background:"radial-gradient(circle,rgba(229,77,46,.08),transparent 60%)",filter:"blur(60px)"}}/>
     <div style={{position:"absolute",bottom:"-20%",left:"-5%",width:500,height:500,borderRadius:"50%",background:"radial-gradient(circle,rgba(199,125,21,.04),transparent 60%)",filter:"blur(50px)"}}/>
     <div style={{position:"absolute",inset:0,opacity:.02,backgroundImage:"repeating-linear-gradient(0deg,rgba(255,255,255,.08),rgba(255,255,255,.08) 1px,transparent 1px,transparent 80px),repeating-linear-gradient(90deg,rgba(255,255,255,.08),rgba(255,255,255,.08) 1px,transparent 1px,transparent 80px)"}}/>
 
-    <div style={{maxWidth:1240,margin:"0 auto",padding:"160px 40px 100px",width:"100%"}}>
+    <div style={{maxWidth:1240,margin:"0 auto",padding:"160px 40px 80px",width:"100%"}}>
       <div className="hero-split" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:60,alignItems:"center"}}>
-        {/* Left */}
         <div>
-          <div className="au" style={{display:"inline-flex",alignItems:"center",gap:9,padding:"7px 18px",borderRadius:99,background:"rgba(229,77,46,.08)",border:"1px solid rgba(229,77,46,.12)",marginBottom:36}}>
+          <div className="au" style={{display:"inline-flex",alignItems:"center",gap:9,padding:"7px 18px",borderRadius:99,background:"rgba(229,77,46,.08)",border:"1px solid rgba(229,77,46,.12)",marginBottom:28}}>
             <div style={{width:6,height:6,borderRadius:99,background:"var(--red)",animation:"pulse 2.5s infinite"}}/>
-            <span style={{color:"rgba(229,77,46,.85)",fontSize:11,fontWeight:600,letterSpacing:".14em",fontFamily:"var(--sans)"}}>RICHMOND, VIRGINIA</span>
+            <span style={{color:"rgba(229,77,46,.85)",fontSize:11,fontWeight:600,letterSpacing:".14em",fontFamily:"var(--sans)"}}>RICHMOND'S #1 FOOD TRUCK MARKETPLACE</span>
           </div>
-          <h1 className="au d1" style={{fontSize:76,fontWeight:400,color:"#FAFAF9",fontFamily:"var(--serif)",lineHeight:1.02,letterSpacing:"-.02em",margin:"0 0 28px"}}>
+          <h1 className="au d1" style={{fontSize:72,fontWeight:400,color:"#FAFAF9",fontFamily:"var(--serif)",lineHeight:1.04,letterSpacing:"-.02em",margin:"0 0 20px"}}>
             Every great<br/>meal starts<br/><em style={{color:"var(--red)"}}>on wheels</em>
           </h1>
-          <p className="au d2" style={{fontSize:19,color:"rgba(255,255,255,.35)",fontFamily:"var(--body)",lineHeight:1.85,maxWidth:440,margin:"0 0 44px",fontWeight:300}}>
-            Discover Richmond's best food trucks. Browse menus, track locations, and book catering — all in one place. The marketplace for serious operators and smart hosts.
+          <p className="au d1" style={{fontSize:15,color:"rgba(255,255,255,.5)",fontFamily:"var(--sans)",fontWeight:600,marginBottom:24,letterSpacing:".01em"}}>
+            4,100+ locals · 50+ trucks · 12+ events monthly
+          </p>
+          <p className="au d2" style={{fontSize:17,color:"rgba(255,255,255,.3)",fontFamily:"var(--body)",lineHeight:1.8,maxWidth:420,margin:"0 0 36px",fontWeight:300}}>
+            Browse menus. Book catering. Track locations. The operating system for Richmond's food truck scene.
           </p>
           <div className="au d3 hero-cta" style={{display:"flex",gap:12}}>
-            <Btn sz="lg" onClick={()=>go("/trucks")}>Explore trucks</Btn>
-            <Btn v="ghost" sz="lg" onClick={()=>go("/pricing")} style={{color:"rgba(255,255,255,.4)",border:"1px solid rgba(255,255,255,.08)"}}>For vendors →</Btn>
+            <Btn sz="lg" onClick={()=>go("/book")}>Book a truck</Btn>
+            <Btn v="ghost" sz="lg" onClick={()=>go("/trucks")} style={{color:"rgba(255,255,255,.5)",border:"1px solid rgba(255,255,255,.1)"}}>Browse trucks</Btn>
           </div>
-          <div className="au d4 hero-stats" style={{display:"flex",gap:56,marginTop:72}}>
-            {[["4,100+","Members"],["50+","Trucks"],["12","Events/mo"]].map(([v,l],i)=>
-              <div key={i}><div style={{fontSize:28,fontWeight:700,color:"#fff",fontFamily:"var(--sans)"}}>{v}</div><div style={{fontSize:11,color:"rgba(255,255,255,.2)",marginTop:5,fontFamily:"var(--mono)",letterSpacing:".06em"}}>{l}</div></div>
-            )}
+
+          {/* Social proof */}
+          <div className="au d4" style={{marginTop:48,paddingTop:28,borderTop:"1px solid rgba(255,255,255,.06)"}}>
+            <div style={{fontSize:10,color:"rgba(255,255,255,.2)",fontFamily:"var(--mono)",letterSpacing:".1em",marginBottom:14}}>TRUSTED BY RICHMOND'S TOP OPERATORS</div>
+            <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
+              {TRUCKS.filter(t=>t.verified).slice(0,5).map(t=><div key={t.id} style={{display:"flex",alignItems:"center",gap:7,background:"rgba(255,255,255,.04)",border:"1px solid rgba(255,255,255,.05)",borderRadius:10,padding:"7px 14px"}}>
+                <span style={{fontSize:18}}>{t.img}</span><span style={{fontSize:12,color:"rgba(255,255,255,.4)",fontWeight:600,fontFamily:"var(--sans)"}}>{t.name}</span>
+              </div>)}
+            </div>
           </div>
         </div>
         {/* Right — editorial food grid */}
@@ -232,10 +239,61 @@ function Hero({go}){
         </div>
       </div>
     </div>
-    <div style={{position:"absolute",bottom:32,left:"50%",transform:"translateX(-50%)",display:"flex",flexDirection:"column",alignItems:"center",gap:8,animation:"float 4s ease infinite"}}>
-      <div style={{width:1,height:32,background:"linear-gradient(rgba(255,255,255,.2),transparent)"}}/>
+  </section>
+
+  {/* Testimonial bar */}
+  <div style={{background:"var(--bg)",padding:"36px 40px",borderBottom:"1px solid var(--line)"}}>
+    <div style={{maxWidth:1240,margin:"0 auto",display:"flex",justifyContent:"center",gap:40,flexWrap:"wrap"}}>
+      {[
+        {q:"FAFT connected us with 3 corporate gigs in our first month. The $49 paid for itself day one.",who:"Chef Marcus",truck:"Curbside Creations"},
+        {q:"We stopped guessing where to find trucks. Now we post a request and get 5 verified responses in hours.",who:"Jennifer A.",truck:"Event Host"},
+        {q:"The verified badge matters. Hosts message us directly now instead of the other way around.",who:"Maria Santos",truck:"RVA Taco Co."},
+      ].map(t=><div key={t.who} style={{flex:"1 1 280px",maxWidth:340,fontFamily:"var(--sans)"}}>
+        <p style={{fontSize:14,color:"var(--ink)",lineHeight:1.65,fontFamily:"var(--body)",fontStyle:"italic",fontWeight:400,margin:"0 0 10px"}}>"{t.q}"</p>
+        <div style={{fontSize:12,fontWeight:700,color:"var(--ink)"}}>{t.who}</div>
+        <div style={{fontSize:11,color:"var(--sub)"}}>{t.truck}</div>
+      </div>)}
     </div>
-  </section>;
+  </div>
+
+  {/* How It Works */}
+  <div style={{background:"var(--bg)",padding:"72px 40px 80px"}}>
+    <div style={{maxWidth:1060,margin:"0 auto"}}>
+      <div style={{textAlign:"center",marginBottom:52}}>
+        <span style={{display:"inline-block",background:"var(--redL)",color:"var(--red)",fontSize:10,fontWeight:700,padding:"5px 16px",borderRadius:99,letterSpacing:".12em",fontFamily:"var(--sans)",marginBottom:16}}>HOW IT WORKS</span>
+        <h2 style={{fontSize:38,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 10px"}}>Two sides. One platform.</h2>
+        <p style={{fontSize:16,color:"var(--sub)",fontFamily:"var(--body)",fontWeight:300}}>Whether you're booking a truck or getting booked — we made it simple.</p>
+      </div>
+      <div className="g2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:24}}>
+        {/* Hosts */}
+        <div style={{background:"var(--card)",borderRadius:20,padding:36,border:"1.5px solid var(--line)"}}>
+          <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}><span style={{fontSize:24}}>📋</span><h3 style={{fontFamily:"var(--sans)",fontWeight:700,fontSize:16,color:"var(--ink)",margin:0}}>For Event Hosts</h3></div>
+          {[["1","Submit a request","Tell us your event type, date, location, headcount, and budget."],["2","Verified trucks respond","Vetted operators respond with quotes — verified vendors respond first."],["3","Compare & confirm","Review menus, ratings, and pricing. Pick your truck."],["4","Event day","Your truck shows up. Reliable, vetted, professional."]].map(([n,t,d])=>
+            <div key={n} style={{display:"flex",gap:14,marginBottom:18}}>
+              <div style={{width:32,height:32,borderRadius:10,background:"var(--redL)",color:"var(--red)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,fontFamily:"var(--sans)",flexShrink:0}}>{n}</div>
+              <div><div style={{fontWeight:600,fontSize:14,color:"var(--ink)",fontFamily:"var(--sans)"}}>{t}</div><div style={{color:"var(--sub)",fontSize:13,marginTop:2,lineHeight:1.5,fontFamily:"var(--body)",fontWeight:300}}>{d}</div></div>
+            </div>
+          )}
+          <Btn full sz="md" style={{marginTop:8}} onClick={()=>go("/book")}>Book a truck →</Btn>
+        </div>
+        {/* Vendors */}
+        <div style={{background:"var(--ink)",borderRadius:20,padding:36,position:"relative",overflow:"hidden"}}>
+          <div style={{position:"absolute",top:"-20%",right:"-10%",width:200,height:200,borderRadius:"50%",background:"radial-gradient(circle,rgba(229,77,46,.06),transparent)",filter:"blur(30px)"}}/>
+          <div style={{position:"relative"}}>
+            <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:24}}><span style={{fontSize:24}}>🚚</span><h3 style={{fontFamily:"var(--sans)",fontWeight:700,fontSize:16,color:"#fff",margin:0}}>For Truck Vendors</h3></div>
+            {[["1","Create your profile","Add your menu, photos, cuisine type, and service area."],["2","Get verified","Apply for Verified Vendor status. Badge + priority + leads."],["3","Receive booking leads","Hosts find you. Private leads hit your inbox. You respond first."],["4","Book events & grow","Land corporate gigs, weddings, festivals. Build your track record."]].map(([n,t,d])=>
+              <div key={n} style={{display:"flex",gap:14,marginBottom:18}}>
+                <div style={{width:32,height:32,borderRadius:10,background:"rgba(229,77,46,.1)",color:"var(--red)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:800,fontFamily:"var(--sans)",flexShrink:0}}>{n}</div>
+                <div><div style={{fontWeight:600,fontSize:14,color:"#fff",fontFamily:"var(--sans)"}}>{t}</div><div style={{color:"rgba(255,255,255,.3)",fontSize:13,marginTop:2,lineHeight:1.5,fontFamily:"var(--body)",fontWeight:300}}>{d}</div></div>
+              </div>
+            )}
+            <Btn full sz="md" v="outline" style={{marginTop:8,borderColor:"rgba(229,77,46,.3)"}} onClick={()=>go("/pricing")}>See vendor pricing →</Btn>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </>;
 }
 
 function Ticker(){
@@ -340,7 +398,7 @@ function EventsPage({go}){
       <div className="au" style={{marginBottom:44}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><div style={{width:3,height:28,borderRadius:3,background:"var(--red)"}}/>
           <h2 style={{fontSize:42,fontWeight:400,color:"var(--ink)",fontFamily:"var(--serif)"}}>Events</h2></div>
-        <p style={{fontSize:16,color:"var(--sub)",fontFamily:"var(--body)",marginLeft:13,fontWeight:300}}>{EVENTS.length} upcoming food truck events</p>
+        <p style={{fontSize:16,color:"var(--sub)",fontFamily:"var(--body)",marginLeft:13,fontWeight:300}}>{EVENTS.length} upcoming · Verified vendors get early access & priority selection</p>
       </div>
       {/* Featured */}
       <div className="au d1 g2" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:16,marginBottom:40}}>
@@ -401,7 +459,10 @@ function BookingPage({go}){
       <div className="au" style={{marginBottom:36}}>
         <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:8}}><div style={{width:3,height:28,borderRadius:3,background:"var(--red)"}}/>
           <h2 style={{fontSize:42,fontWeight:400,color:"var(--ink)",fontFamily:"var(--serif)"}}>Book a truck</h2></div>
-        <p style={{fontSize:16,color:"var(--sub)",fontFamily:"var(--body)",marginLeft:13,fontWeight:300}}>Tell us about your event</p>
+        <p style={{fontSize:16,color:"var(--sub)",fontFamily:"var(--body)",marginLeft:13,fontWeight:300}}>Tell us about your event — verified vendors respond first</p>
+      </div>
+      <div style={{display:"flex",justifyContent:"center",gap:20,marginBottom:28}}>
+        {[["⚡","Avg. response: 12 hrs"],["✓","Verified vendors only"],["🔒","No commitment"]].map(([ic,t])=><div key={t} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:"var(--sub)",fontFamily:"var(--sans)"}}><span>{ic}</span><span>{t}</span></div>)}
       </div>
       <div className="au d1" style={{background:"var(--card)",borderRadius:22,padding:40,border:"1.5px solid var(--line)",boxShadow:"0 8px 40px rgba(0,0,0,.02)"}}>
         <div className="form-2col" style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 18px"}}>
@@ -431,99 +492,125 @@ function BookingPage({go}){
 // ─── Pricing ─────────────────────────────────────────────────────────────
 function PricingPage({go}){
   const Ck=({on=true})=><span style={{color:on?"var(--grn)":"var(--line)",fontWeight:700,fontSize:14}}>{on?"✓":"—"}</span>;
-  const cats=[{name:"BBQ & Smoked",total:5,taken:4},{name:"Mexican / Latin",total:5,taken:3},{name:"Southern / Soul",total:5,taken:4},{name:"Asian Fusion",total:4,taken:2},{name:"Breakfast / Brunch",total:4,taken:3},{name:"Beverages / Dessert",total:4,taken:2}];
+  const cats=[{name:"BBQ & Smoked Meats",max:2,taken:1},{name:"Mexican / Latin",max:2,taken:1},{name:"Southern / Soul Food",max:2,taken:1},{name:"Asian Fusion",max:2,taken:0},{name:"Breakfast / Brunch",max:1,taken:1},{name:"Beverages / Dessert",max:1,taken:0}];
+  const totalSpots=10,taken=7;const left=totalSpots-taken;
   return<section style={{minHeight:"100vh",background:"var(--bg)",padding:"120px 40px 80px"}}>
     <div style={{maxWidth:1060,margin:"0 auto"}}>
-      <div className="au" style={{textAlign:"center",marginBottom:24}}>
-        <span style={{display:"inline-block",background:"var(--redL)",color:"var(--red)",fontSize:11,fontWeight:700,padding:"6px 18px",borderRadius:99,letterSpacing:".1em",fontFamily:"var(--sans)",marginBottom:20}}>FOR VENDORS</span>
-        <h2 style={{fontSize:48,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 14px"}}>Stop chasing. Start getting booked.</h2>
-        <p style={{fontSize:18,color:"var(--sub)",fontFamily:"var(--body)",maxWidth:520,margin:"0 auto",fontWeight:300,lineHeight:1.7}}>One booking covers months of membership. This is the cheapest customer acquisition channel you'll ever have.</p>
+
+      {/* Header */}
+      <div className="au" style={{textAlign:"center",marginBottom:20}}>
+        <span style={{display:"inline-block",background:"var(--ink)",color:"#fff",fontSize:10,fontWeight:700,padding:"6px 18px",borderRadius:99,letterSpacing:".12em",fontFamily:"var(--sans)",marginBottom:20}}>FOUNDING COHORT · LIMITED TO 10 VENDORS</span>
+        <h2 style={{fontSize:48,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 14px"}}>You're not paying for exposure.<br/><em style={{color:"var(--red)"}}>You're paying for controlled competition.</em></h2>
+        <p style={{fontSize:17,color:"var(--sub)",fontFamily:"var(--body)",maxWidth:560,margin:"0 auto",fontWeight:300,lineHeight:1.75}}>We intentionally cap vendor spots to protect booking volume per partner. Fewer vendors means more leads per truck, higher quality matches, and zero spam.</p>
       </div>
 
-      {/* ROI callout */}
-      <div className="au d1" style={{background:"var(--ink)",borderRadius:18,padding:"28px 36px",marginBottom:40,display:"flex",justifyContent:"center",gap:60,flexWrap:"wrap",textAlign:"center"}}>
-        {[["$800–$2,500+","Avg. booking revenue"],["1 booking","Pays for a full year"],["4,100+","Members see your truck"]].map(([v,l])=>
-          <div key={l}><div style={{fontSize:28,fontWeight:800,color:"#fff",fontFamily:"var(--sans)"}}>{v}</div><div style={{fontSize:12,color:"rgba(255,255,255,.3)",marginTop:4,fontFamily:"var(--mono)"}}>{l}</div></div>
+      {/* ROI bar */}
+      <div className="au d1" style={{background:"var(--ink)",borderRadius:18,padding:"28px 36px",marginBottom:44,display:"flex",justifyContent:"center",gap:56,flexWrap:"wrap",textAlign:"center"}}>
+        {[["$800–$2,500+","Per booking"],["1 booking","= 10 months of membership"],["3–5","Leads per partner/week (target)"],["10","Total partner spots"]].map(([v,l])=>
+          <div key={l}><div style={{fontSize:24,fontWeight:800,color:"#fff",fontFamily:"var(--sans)"}}>{v}</div><div style={{fontSize:11,color:"rgba(255,255,255,.3)",marginTop:4,fontFamily:"var(--mono)"}}>{l}</div></div>
         )}
       </div>
 
-      {/* 3-Tier Grid */}
-      <div className="au d2 g3" style={{display:"grid",gridTemplateColumns:"1fr 1.15fr 1fr",gap:16,marginBottom:48}}>
-        {/* Free */}
-        <div style={{background:"var(--card)",borderRadius:20,padding:36,border:"1.5px solid var(--line)",fontFamily:"var(--sans)",display:"flex",flexDirection:"column"}}>
-          <div style={{fontSize:10,fontWeight:700,color:"var(--mute)",letterSpacing:".12em",marginBottom:8}}>BASIC</div>
-          <div style={{fontSize:44,fontWeight:800,color:"var(--ink)"}}>$0<span style={{fontSize:15,fontWeight:400,color:"var(--mute)"}}>/mo</span></div>
-          <p style={{color:"var(--sub)",fontSize:13,margin:"8px 0 28px",fontWeight:300,lineHeight:1.5}}>Get listed. See what's possible.</p>
+      {/* Main 2-column: Free vs Founding Partner */}
+      <div className="au d2 g2" style={{display:"grid",gridTemplateColumns:"280px 1fr",gap:20,marginBottom:48}}>
+
+        {/* Free — minimal column */}
+        <div style={{background:"var(--card)",borderRadius:20,padding:32,border:"1.5px solid var(--line)",fontFamily:"var(--sans)",display:"flex",flexDirection:"column"}}>
+          <div style={{fontSize:10,fontWeight:700,color:"var(--mute)",letterSpacing:".12em",marginBottom:8}}>BASIC LISTING</div>
+          <div style={{fontSize:36,fontWeight:800,color:"var(--ink)"}}>$0</div>
+          <p style={{color:"var(--sub)",fontSize:12,margin:"6px 0 24px",fontWeight:300,lineHeight:1.5}}>Directory only. No leads. No priority.</p>
           <div style={{flex:1}}>
-            {["Basic directory listing","Apply to public events","Respond to bookings","1 post per week","Community access","Customer reviews"].map(f=><div key={f} style={{display:"flex",gap:9,padding:"9px 0",borderBottom:"1px solid var(--line)",fontSize:13}}><Ck/><span style={{color:"var(--ink)"}}>{f}</span></div>)}
+            {["Directory listing","Respond to public requests","Customer reviews","Community access"].map(f=><div key={f} style={{display:"flex",gap:8,padding:"8px 0",borderBottom:"1px solid var(--line)",fontSize:12}}><Ck/><span style={{color:"var(--ink)"}}>{f}</span></div>)}
+            {["Lead routing","Priority placement","Promotion","Featured listing","Category protection","Event early access"].map(f=><div key={f} style={{display:"flex",gap:8,padding:"8px 0",borderBottom:"1px solid var(--line)",fontSize:12}}><Ck on={false}/><span style={{color:"var(--mute)",textDecoration:"line-through",textDecorationColor:"var(--line)"}}>{f}</span></div>)}
           </div>
-          <Btn v="soft" full style={{marginTop:24}} onClick={()=>go("/member")}>Get started free</Btn>
+          <Btn v="soft" full sz="sm" style={{marginTop:20}} onClick={()=>go("/member")}>Get listed</Btn>
         </div>
 
-        {/* Verified — Hero card */}
-        <div style={{background:"var(--card)",borderRadius:20,padding:40,border:"2.5px solid var(--red)",position:"relative",boxShadow:"0 20px 80px rgba(229,77,46,.1)",fontFamily:"var(--sans)",display:"flex",flexDirection:"column",transform:"scale(1.02)"}}>
-          <div style={{position:"absolute",top:-15,left:"50%",transform:"translateX(-50%)",background:"var(--red)",color:"#fff",padding:"7px 24px",borderRadius:99,fontSize:11,fontWeight:700,letterSpacing:".08em",whiteSpace:"nowrap"}}>MOST POPULAR</div>
-          <div style={{fontSize:10,fontWeight:700,color:"var(--red)",letterSpacing:".12em",marginBottom:8}}>VERIFIED VENDOR</div>
-          <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-            <span style={{fontSize:44,fontWeight:800,color:"var(--ink)"}}>$49</span>
-            <span style={{fontSize:15,color:"var(--mute)"}}>/mo</span>
-          </div>
-          <div style={{display:"inline-flex",alignItems:"center",gap:6,background:"rgba(45,140,60,.06)",border:"1px solid rgba(45,140,60,.1)",borderRadius:8,padding:"6px 12px",marginTop:10,marginBottom:24,alignSelf:"flex-start"}}>
-            <span style={{fontSize:11,fontWeight:700,color:"var(--grn)"}}>🔥 Founding rate: $29/mo locked for life</span>
-          </div>
-          <div style={{flex:1}}>
-            {[
-              ["Everything in Basic, plus:",true],["Verified ✓ badge",false],["Priority in host booking threads",false],["Private booking board access",false],
-              ["Weekly promotion to 4,100+",false],["Monthly spotlight eligible",false],["Featured website listing",false],
-              ["AI menu scanner",false],["Unlimited posts",false],["Booking responses shown first",false],["Analytics dashboard (coming soon)",false]
-            ].map(([f,head])=><div key={f} style={{display:"flex",gap:9,padding:"9px 0",borderBottom:"1px solid var(--line)",fontSize:13}}><span style={{color:head?"var(--red)":"var(--grn)",fontWeight:700,fontSize:14}}>{head?"★":"✓"}</span><span style={{color:"var(--ink)",fontWeight:head?700:400}}>{f}</span></div>)}
-          </div>
-          <Btn full sz="lg" style={{marginTop:24}} onClick={()=>go("/member")}>Become a Verified Vendor</Btn>
-          <p style={{color:"var(--mute)",fontSize:11,textAlign:"center",marginTop:10}}>30-day founding window · Then $49/mo</p>
-        </div>
+        {/* Founding Vendor Partner — hero */}
+        <div style={{background:"var(--card)",borderRadius:22,padding:44,border:"2.5px solid var(--red)",position:"relative",boxShadow:"0 24px 80px rgba(229,77,46,.1)",fontFamily:"var(--sans)"}}>
+          <div style={{position:"absolute",top:-16,left:"50%",transform:"translateX(-50%)",background:"var(--red)",color:"#fff",padding:"8px 28px",borderRadius:99,fontSize:11,fontWeight:700,letterSpacing:".08em",whiteSpace:"nowrap"}}>FOUNDING COHORT — {left} OF {totalSpots} SPOTS LEFT</div>
 
-        {/* Premium Future */}
-        <div style={{background:"var(--ink)",borderRadius:20,padding:36,fontFamily:"var(--sans)",display:"flex",flexDirection:"column",position:"relative",overflow:"hidden"}}>
-          <div style={{position:"absolute",top:"-20%",right:"-15%",width:200,height:200,borderRadius:"50%",background:"radial-gradient(circle,rgba(251,191,36,.06),transparent)",filter:"blur(30px)"}}/>
-          <div style={{position:"relative"}}>
-            <div style={{fontSize:10,fontWeight:700,color:"#FBBF24",letterSpacing:".12em",marginBottom:8}}>PREMIUM</div>
-            <div style={{fontSize:44,fontWeight:800,color:"#fff"}}>$79<span style={{fontSize:15,fontWeight:400,color:"rgba(255,255,255,.35)"}}>–99/mo</span></div>
-            <p style={{color:"rgba(255,255,255,.3)",fontSize:13,margin:"8px 0 28px",fontWeight:300,lineHeight:1.5}}>For operators ready to dominate.</p>
-            <div style={{flex:1}}>
-              {["Everything in Verified, plus:","Guaranteed lead priority","Lead rotation first-in-line","Custom promo content monthly","Dedicated account manager","Exclusive event invitations","Advanced analytics + insights"].map((f,i)=><div key={f} style={{display:"flex",gap:9,padding:"9px 0",borderBottom:"1px solid rgba(255,255,255,.06)",fontSize:13}}><span style={{color:i===0?"#FBBF24":"rgba(255,255,255,.25)",fontWeight:700,fontSize:14}}>{i===0?"★":"✓"}</span><span style={{color:i===0?"#fff":"rgba(255,255,255,.5)",fontWeight:i===0?700:400}}>{f}</span></div>)}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:36}}>
+            {/* Left — pricing + scarcity */}
+            <div>
+              <div style={{fontSize:10,fontWeight:700,color:"var(--red)",letterSpacing:".14em",marginBottom:10}}>FOUNDING VENDOR PARTNER</div>
+              <div style={{display:"flex",alignItems:"baseline",gap:6}}>
+                <span style={{fontSize:52,fontWeight:800,color:"var(--ink)"}}>$99</span>
+                <span style={{fontSize:16,color:"var(--mute)"}}>/mo</span>
+              </div>
+              <p style={{color:"var(--sub)",fontSize:13,margin:"6px 0 0",fontWeight:300,lineHeight:1.6}}>Rate locked for life. After founding cohort fills, new partners enter at <strong style={{color:"var(--ink)"}}>$149+/mo</strong>.</p>
+
+              {/* Cohort counter */}
+              <div style={{marginTop:24,background:"var(--tint)",borderRadius:14,padding:18}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <span style={{fontSize:12,fontWeight:700,color:"var(--ink)"}}>Founding Cohort</span>
+                  <span style={{fontSize:12,fontWeight:800,color:"var(--red)",fontFamily:"var(--mono)"}}>{taken}/{totalSpots}</span>
+                </div>
+                <div style={{width:"100%",height:8,borderRadius:8,background:"var(--line)",overflow:"hidden"}}>
+                  <div style={{width:`${(taken/totalSpots)*100}%`,height:"100%",borderRadius:8,background:"var(--red)",transition:"width 1s"}}/>
+                </div>
+                <div style={{display:"flex",justifyContent:"space-between",marginTop:8}}>
+                  <span style={{fontSize:10,color:"var(--mute)",fontFamily:"var(--mono)"}}>{left} spots remaining</span>
+                  <span style={{fontSize:10,color:"var(--red)",fontWeight:600}}>Waitlist after full</span>
+                </div>
+              </div>
+
+              {/* Category protection */}
+              <div style={{marginTop:20}}>
+                <div style={{fontSize:10,fontWeight:700,color:"var(--ink)",letterSpacing:".1em",marginBottom:10}}>CATEGORY PROTECTION (1–2 PER CUISINE)</div>
+                {cats.map(c=>{const full=c.taken>=c.max;return<div key={c.name} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"7px 0",borderBottom:"1px solid var(--line)"}}>
+                  <span style={{fontSize:12,color:full?"var(--mute)":"var(--ink)",fontWeight:full?400:500}}>{c.name}</span>
+                  <span style={{fontSize:10,fontWeight:700,fontFamily:"var(--mono)",color:full?"var(--red)":c.taken>0?"var(--amb)":"var(--grn)"}}>{full?"FULL":c.taken+"/"+c.max}</span>
+                </div>})}
+                <p style={{fontSize:10,color:"var(--sub)",marginTop:10,lineHeight:1.5,fontStyle:"italic"}}>When your category is full, no competing truck can join. Your booking volume is protected.</p>
+              </div>
             </div>
-            <div style={{background:"rgba(251,191,36,.08)",border:"1px solid rgba(251,191,36,.12)",borderRadius:10,padding:"12px 16px",marginTop:24,textAlign:"center"}}>
-              <span style={{color:"#FBBF24",fontSize:12,fontWeight:600}}>Coming Q3 2026</span>
+
+            {/* Right — features */}
+            <div>
+              <div style={{fontSize:10,fontWeight:700,color:"var(--ink)",letterSpacing:".1em",marginBottom:14}}>WHAT FOUNDING PARTNERS GET</div>
+              {[
+                ["🏅","Founding Partner badge","Public credibility. Hosts see you're a day-one operator."],
+                ["🔒","Category protection","1–2 vendors per cuisine. Your competition is capped."],
+                ["📬","Direct lead routing","Booking requests matched to your cuisine, sent to your inbox."],
+                ["⚡","Priority responses","Your quotes appear first to every host. Always."],
+                ["📍","Featured placement","Top of directory, top of search, top of events."],
+                ["📣","Weekly promotion","Featured to 4,100+ members. Not buried — promoted."],
+                ["🎪","First access to events","See and apply to events before anyone else."],
+                ["📊","Booking analytics","Track views, leads, and conversion rate."],
+              ].map(([ic,t,d])=><div key={t} style={{display:"flex",gap:12,marginBottom:16}}>
+                <span style={{fontSize:18,flexShrink:0,marginTop:1}}>{ic}</span>
+                <div><div style={{fontWeight:700,fontSize:13,color:"var(--ink)"}}>{t}</div><div style={{color:"var(--sub)",fontSize:12,marginTop:1,lineHeight:1.4,fontWeight:300}}>{d}</div></div>
+              </div>)}
+              <Btn full sz="lg" style={{marginTop:12}} onClick={()=>go("/member")}>Apply for Founding Partner</Btn>
+              <p style={{color:"var(--mute)",fontSize:10,textAlign:"center",marginTop:10}}>$99/mo locked for life · Cancel anytime · Waitlist after 10</p>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Category Scarcity */}
-      <div className="au d3" style={{background:"var(--card)",borderRadius:20,padding:40,border:"1.5px solid var(--line)",marginBottom:40}}>
-        <div style={{textAlign:"center",marginBottom:28}}>
-          <h3 style={{fontFamily:"var(--serif)",fontSize:24,color:"var(--ink)",margin:"0 0 8px"}}>Limited verified spots per cuisine</h3>
-          <p style={{color:"var(--sub)",fontSize:14,fontFamily:"var(--body)",fontWeight:300}}>We cap each category to protect your market position. Once full, new vendors join a waitlist.</p>
-        </div>
-        <div className="g3" style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:12}}>
-          {cats.map(c=>{const pct=Math.round((c.taken/c.total)*100);const left=c.total-c.taken;const urgent=left<=1;
-            return<div key={c.name} style={{padding:18,borderRadius:14,border:`1.5px solid ${urgent?"rgba(229,77,46,.2)":"var(--line)"}`,background:urgent?"rgba(229,77,46,.02)":"var(--bg)"}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
-                <span style={{fontWeight:600,fontSize:13,color:"var(--ink)",fontFamily:"var(--sans)"}}>{c.name}</span>
-                <span style={{fontSize:11,fontWeight:700,color:urgent?"var(--red)":"var(--amb)",fontFamily:"var(--mono)"}}>{left} left</span>
-              </div>
-              <div style={{width:"100%",height:6,borderRadius:6,background:"var(--line)",overflow:"hidden"}}>
-                <div style={{width:`${pct}%`,height:"100%",borderRadius:6,background:urgent?"var(--red)":"var(--grn)",transition:"width 1s"}}/>
-              </div>
-              <div style={{fontSize:10,color:"var(--mute)",marginTop:6,fontFamily:"var(--mono)"}}>{c.taken}/{c.total} verified</div>
-            </div>})}
+      {/* Why we cap */}
+      <div className="au d3" style={{background:"var(--ink)",borderRadius:20,padding:"40px 48px",marginBottom:40,position:"relative",overflow:"hidden"}}>
+        <div style={{position:"absolute",top:"-30%",right:"-10%",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(229,77,46,.06),transparent)",filter:"blur(40px)"}}/>
+        <div style={{position:"relative",display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:32}}>
+          {[
+            ["No overcrowding","Fewer vendors per category means more leads per truck. Your $99 buys exclusivity, not just access."],
+            ["No race to the bottom","When 50 trucks compete for one gig, prices collapse. When 2 compete, value holds."],
+            ["Higher quality bookings","Hosts get curated matches, not a wall of spam. Better matches = better gigs = better revenue."],
+          ].map(([t,d])=><div key={t}>
+            <h4 style={{fontSize:14,fontWeight:700,color:"#fff",marginBottom:8,fontFamily:"var(--sans)"}}>{t}</h4>
+            <p style={{fontSize:13,color:"rgba(255,255,255,.35)",lineHeight:1.65,fontFamily:"var(--body)",fontWeight:300}}>{d}</p>
+          </div>)}
         </div>
       </div>
 
-      {/* Social proof */}
-      <div className="au d4" style={{textAlign:"center"}}>
-        <p style={{color:"var(--mute)",fontSize:12,fontFamily:"var(--mono)",letterSpacing:".06em",marginBottom:16}}>TRUSTED BY RICHMOND'S BEST</p>
-        <div style={{display:"flex",justifyContent:"center",gap:28,flexWrap:"wrap"}}>{TRUCKS.filter(t=>t.plan==="premium").slice(0,5).map(t=><span key={t.id} style={{color:"var(--sub)",fontSize:13,fontFamily:"var(--sans)"}}>{t.img} {t.name}</span>)}</div>
+      {/* Future pricing signal */}
+      <div className="au d4" style={{textAlign:"center",padding:"32px 0",borderTop:"1px solid var(--line)"}}>
+        <div style={{display:"inline-flex",alignItems:"center",gap:8,padding:"10px 24px",borderRadius:12,background:"var(--tint)",border:"1px solid var(--line)"}}>
+          <span style={{fontSize:11,color:"var(--sub)",fontFamily:"var(--sans)"}}>After the founding cohort: new partners enter at</span>
+          <span style={{fontSize:14,fontWeight:800,color:"var(--ink)",fontFamily:"var(--sans)"}}>$149+/mo</span>
+        </div>
+        <p style={{color:"var(--mute)",fontSize:12,marginTop:12,fontFamily:"var(--sans)"}}>Lock in $99 now. This rate will never be offered again.</p>
       </div>
     </div>
   </section>;
@@ -534,19 +621,20 @@ function AboutPage({go}){
   return<section style={{minHeight:"100vh",background:"var(--bg)",padding:"120px 40px 80px"}}>
     <div style={{maxWidth:760,margin:"0 auto"}}>
       <div className="au">
-        <h2 style={{fontSize:52,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 28px",lineHeight:1.1}}>Richmond deserves better <em style={{color:"var(--red)"}}>food truck</em> culture</h2>
-        <p style={{fontSize:19,color:"var(--sub)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:28,fontWeight:300}}>FAFT RVA started with a simple question: why is it so hard to find a food truck? Trucks were scattered across social media, events had no hub, customers were guessing.</p>
-        <p style={{fontSize:19,color:"var(--sub)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:44,fontWeight:300}}>We're building the operating system for Richmond's food truck scene. One platform. Every truck, every event, every hungry customer — connected.</p>
+        <h2 style={{fontSize:52,fontFamily:"var(--serif)",color:"var(--ink)",margin:"0 0 28px",lineHeight:1.1}}>We saw a broken system.<br/><em style={{color:"var(--red)"}}>So we built the fix.</em></h2>
+        <p style={{fontSize:19,color:"var(--sub)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:24,fontWeight:300}}>Richmond's food truck scene was chaos. Trucks were scattered across Facebook groups, buried under spam. Event hosts were guessing which vendors were reliable. Good operators were losing gigs to whoever posted last. Nobody had a system.</p>
+        <p style={{fontSize:19,color:"var(--sub)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:24,fontWeight:300}}>The Richmond Food Truck Association charges $300/year for a logo on a static page. StreetFoodFinder gives away a generic map listing. Neither generates bookings. Neither vets vendors. Neither helps hosts.</p>
+        <p style={{fontSize:19,color:"var(--ink)",fontFamily:"var(--body)",lineHeight:1.85,marginBottom:44,fontWeight:400}}>FAFT RVA is the operating system Richmond's food truck scene never had. One platform where verified trucks get found, hosts get matched, and bookings happen — not by accident, but by design.</p>
       </div>
       <div className="au d2" style={{background:"var(--ink)",borderRadius:22,padding:48,marginBottom:40,position:"relative",overflow:"hidden"}}>
         <div style={{position:"absolute",top:"-30%",right:"-10%",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(229,77,46,.06),transparent)",filter:"blur(40px)"}}/>
         <div style={{position:"relative"}}>
-          <span style={{color:"rgba(255,255,255,.25)",fontSize:10,fontWeight:600,letterSpacing:".15em",fontFamily:"var(--mono)"}}>OUR MISSION</span>
-          <p style={{fontSize:22,color:"rgba(255,255,255,.5)",fontFamily:"var(--serif)",lineHeight:1.7,fontStyle:"italic",marginTop:16}}>To make Richmond the #1 food truck city in America — giving owners tools to grow, hosts access to vendors, and customers the easiest way to find great food on wheels.</p>
+          <span style={{color:"rgba(255,255,255,.25)",fontSize:10,fontWeight:600,letterSpacing:".15em",fontFamily:"var(--mono)"}}>THE THESIS</span>
+          <p style={{fontSize:22,color:"rgba(255,255,255,.55)",fontFamily:"var(--serif)",lineHeight:1.7,fontStyle:"italic",marginTop:16}}>Whoever owns the booking infrastructure owns the market. We're not building a directory — we're building the layer between every food truck and every event in Richmond. The platform where hosts post first and trucks show up first.</p>
         </div>
       </div>
       <div className="au d3 g3" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:16,marginBottom:44}}>
-        {[["🚚","For Trucks","Free tools to reach 4,100+ customers."],["📅","For Hosts","Find vetted vendors, manage events."],["🍔","For You","Real-time locations, one-click booking."]].map(([ic,t,d])=>
+        {[["🚚","For Trucks","Verified listing, booking leads, weekly promotion to 4,100+ members. Stop chasing — get booked."],["📅","For Hosts","Submit one request, get verified vendor responses within hours. No spam. No guessing."],["🏗️","For Richmond","A professional food truck ecosystem that makes the scene stronger, not louder."]].map(([ic,t,d])=>
           <div key={t} className="lift" style={{background:"var(--card)",borderRadius:16,padding:28,border:"1.5px solid var(--line)"}}>
             <div style={{fontSize:28,marginBottom:12}}>{ic}</div>
             <h4 style={{fontSize:15,fontWeight:700,color:"var(--ink)",marginBottom:6,fontFamily:"var(--sans)"}}>{t}</h4>
@@ -555,9 +643,9 @@ function AboutPage({go}){
         )}
       </div>
       <div style={{textAlign:"center",paddingTop:36,borderTop:"1px solid var(--line)"}}>
-        <p style={{color:"var(--sub)",fontSize:15,fontFamily:"var(--body)"}}>Founded by <strong style={{color:"var(--ink)"}}>Ron Joseph</strong></p>
-        <p style={{color:"var(--mute)",fontSize:14,fontFamily:"var(--body)",marginTop:4}}>Richmond, VA · Est. 2026</p>
-        <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:24}}><Btn onClick={()=>go("/trucks")}>Find trucks</Btn><Btn v="outline" onClick={()=>go("/pricing")}>Join as vendor</Btn></div>
+        <p style={{color:"var(--ink)",fontSize:17,fontFamily:"var(--body)",fontWeight:400}}>Founded by <strong>Ron Joseph</strong></p>
+        <p style={{color:"var(--sub)",fontSize:14,fontFamily:"var(--body)",marginTop:4}}>Richmond, VA · Building infrastructure, not a hobby group.</p>
+        <div style={{display:"flex",gap:10,justifyContent:"center",marginTop:24}}><Btn onClick={()=>go("/book")}>Book a truck</Btn><Btn v="outline" onClick={()=>go("/pricing")}>Vendor pricing</Btn></div>
       </div>
     </div>
   </section>;
@@ -843,7 +931,7 @@ function AdminDash({go}){
       {st.view==="dashboard"&&<div className="au">
         <h2 style={{fontSize:24,fontWeight:700,margin:"0 0 24px"}}>Command Center</h2>
         <div style={{background:"linear-gradient(135deg,rgba(229,77,46,.08),rgba(199,125,21,.03))",border:"1px solid rgba(229,77,46,.12)",borderRadius:16,padding:"22px 28px",marginBottom:24,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><div style={{fontSize:10,color:"var(--amb)",fontWeight:600,letterSpacing:".12em",fontFamily:"var(--mono)"}}>MRR</div><div style={{fontSize:38,fontWeight:700,marginTop:4}}>${prem*49}<span style={{fontSize:16,color:"var(--adm-t)"}}>/mo</span></div></div>
+          <div><div style={{fontSize:10,color:"var(--amb)",fontWeight:600,letterSpacing:".12em",fontFamily:"var(--mono)"}}>MRR</div><div style={{fontSize:38,fontWeight:700,marginTop:4}}>${prem*99}<span style={{fontSize:16,color:"var(--adm-t)"}}>/mo</span></div></div>
           <span style={{color:"var(--grn)",fontSize:18,fontWeight:700}}>↑16.7%</span>
         </div>
         <div className="g4" style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginBottom:24}}>
@@ -861,7 +949,7 @@ function AdminDash({go}){
         <h2 style={{fontSize:24,fontWeight:700,margin:"0 0 24px"}}>Trucks ({st.trucks.length})</h2>
         <div style={{display:"grid",gridTemplateColumns:"repeat(2,1fr)",gap:12}}>{st.trucks.map(t=><ACard key={t.id}>
           <div style={{display:"flex",gap:12}}><div style={{width:44,height:44,borderRadius:11,fontSize:22,background:"var(--adm-s)",display:"flex",alignItems:"center",justifyContent:"center"}}>{t.img}</div>
-          <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:700,fontSize:14}}>{t.name}</span><ABadge color={t.plan==="premium"?"var(--amb)":"var(--adm-t)"}>{t.plan==="premium"?"★ $49":"FREE"}</ABadge></div>
+          <div style={{flex:1}}><div style={{display:"flex",justifyContent:"space-between"}}><span style={{fontWeight:700,fontSize:14}}>{t.name}</span><ABadge color={t.plan==="premium"?"var(--amb)":"var(--adm-t)"}>{t.plan==="premium"?"★ $99":"FREE"}</ABadge></div>
           <div style={{color:"var(--adm-t)",fontSize:12,marginTop:2}}>{t.cuisine} · ★{t.rating}</div>
           <div style={{display:"flex",gap:5,marginTop:8}}><ABadge color={t.status==="active"?"var(--grn)":"#666"}>● {t.status}</ABadge>{t.verified&&<ABadge color="var(--blu)">✓</ABadge>}</div></div></div>
         </ACard>)}</div>
