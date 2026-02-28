@@ -18,7 +18,6 @@ function Input({label,value,onChange,placeholder,type="text",textarea,rows=3}){c
 function Nav({go,route}){return<nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(250,250,248,.9)",backdropFilter:"blur(16px)",borderBottom:"1px solid var(--line)"}}><div style={{maxWidth:1120,margin:"0 auto",padding:"0 40px",height:56,display:"flex",alignItems:"center",justifyContent:"space-between"}}><div onClick={()=>go("/")} style={{cursor:"pointer",display:"flex",alignItems:"baseline",gap:6}}><span style={{fontFamily:"var(--serif)",fontSize:17,fontWeight:400,color:"var(--ink)",fontStyle:"italic"}}>find a</span><span style={{fontFamily:"var(--serif)",fontSize:17,fontWeight:500,color:"var(--accent)"}}>food truck</span></div><div className="nav-links" style={{display:"flex",alignItems:"center",gap:32}}>{[["Submit Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"]].map(([l,p])=><span key={p} onClick={()=>go(p)} style={{fontSize:13,fontWeight:500,color:route===p?"var(--ink)":"var(--mute)",cursor:"pointer",transition:"color .15s"}} onMouseEnter={e=>e.currentTarget.style.color="var(--ink)"} onMouseLeave={e=>{if(route!==p)e.currentTarget.style.color="var(--mute)"}}>{l}</span>)}</div><div style={{display:"flex",gap:8}}><Btn v="ghost" sz="sm" onClick={()=>go("/member")}>Vendor Login</Btn><Btn v="accent" sz="sm" onClick={()=>go("/submit")}>Submit Event</Btn></div></div></nav>}
 
 function HomePage({go}){
-  const Img=({src,alt})=><div style={{flex:1,minWidth:0,height:220,borderRadius:10,overflow:"hidden",background:"var(--tint)"}}><img src={src} alt={alt} style={{width:"100%",height:"100%",objectFit:"cover",display:"block",filter:"saturate(.85)"}}/></div>;
   return<>
   {/* Hero */}
   <section style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"120px 40px 80px",position:"relative"}}>
@@ -40,11 +39,14 @@ function HomePage({go}){
     {[...Array(3)].map((_,j)=><div key={j} style={{display:"flex"}}>{["BBQ & Smoked Meats","Mexican / Latin","Southern / Soul Food","Asian Fusion","Breakfast & Brunch","Beverages & Dessert","Catering","Weddings","Corporate Events","Festivals"].map((t,i)=><span key={i} style={{padding:"0 32px",fontSize:12,color:"var(--mute)",fontFamily:"var(--mono)",letterSpacing:".02em"}}>{t}</span>)}</div>)}
   </div></div>
 
-  {/* Image strip 1 */}
-  <div style={{padding:"48px 40px 0"}}><div className="g3 mob-hide" style={{maxWidth:1040,margin:"0 auto",display:"flex",gap:12}}>
-    <Img src="https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=600&h=400&fit=crop" alt="Food truck serving"/>
-    <Img src="https://images.unsplash.com/photo-1567129937968-cdad8f07e2f8?w=600&h=400&fit=crop" alt="Street food preparation"/>
-    <Img src="https://images.unsplash.com/photo-1513639776629-7b43c5fa0613?w=600&h=400&fit=crop" alt="Food truck event"/>
+  {/* Hero image */}
+  <div style={{padding:"48px 40px 0"}}><div style={{maxWidth:1040,margin:"0 auto",height:320,borderRadius:14,overflow:"hidden",position:"relative",background:"var(--ink)"}}>
+    <img src="https://images.unsplash.com/photo-1565123409695-7b5ef63a2efb?w=1200&h=600&fit=crop" alt="Food trucks" style={{width:"100%",height:"100%",objectFit:"cover",display:"block",opacity:.55,filter:"saturate(.8)"}}/>
+    <div style={{position:"absolute",inset:0,background:"linear-gradient(to right,rgba(26,22,19,.7) 0%,transparent 60%)"}}/>
+    <div style={{position:"absolute",bottom:36,left:40}}>
+      <p style={{fontSize:11,fontWeight:500,color:"rgba(255,255,255,.4)",letterSpacing:".08em",fontFamily:"var(--mono)",marginBottom:6}}>RICHMOND, VA</p>
+      <p style={{fontSize:20,fontWeight:300,color:"#fff",fontFamily:"var(--serif)",lineHeight:1.4}}>Where the best trucks<br/>meet the best events.</p>
+    </div>
   </div></div>
 
   {/* How It Works */}
@@ -75,13 +77,6 @@ function HomePage({go}){
       <div className="au d3"><Btn v="accent" sz="lg" onClick={()=>go("/access")}>Join the Waitlist</Btn></div>
     </div>
   </section>
-
-  {/* Image strip 2 */}
-  <div style={{padding:"48px 40px 0"}}><div className="g3 mob-hide" style={{maxWidth:1040,margin:"0 auto",display:"flex",gap:12}}>
-    <Img src="https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=600&h=400&fit=crop" alt="Plated food"/>
-    <Img src="https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=600&h=400&fit=crop" alt="BBQ cooking"/>
-    <Img src="https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?w=600&h=400&fit=crop" alt="Fresh tacos"/>
-  </div></div>
 
   {/* Warm close */}
   <section style={{padding:"80px 40px",textAlign:"center"}}>
