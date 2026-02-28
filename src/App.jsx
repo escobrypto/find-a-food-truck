@@ -687,22 +687,13 @@ function MemberDash({go}){
       const base64=dataUrl.split(",")[1];
       const mediaType=file.type||"image/jpeg";
       try{
-        const resp=await fetch("https://api.anthropic.com/v1/messages",{
+        const resp=await fetch("/api/scan-menu",{
           method:"POST",headers:{"Content-Type":"application/json"},
-          body:JSON.stringify({
-            model:"claude-sonnet-4-20250514",max_tokens:1000,
-            system:"You extract menu items from food truck menu photos. Return ONLY valid JSON — no markdown, no backticks, no explanation. Return an array of objects with keys: name (string), price (number), desc (string, brief description or empty string). If you cannot read items clearly, return what you can. Example: [{\"name\":\"Brisket Tacos\",\"price\":14,\"desc\":\"Smoked brisket with slaw\"}]",
-            messages:[{role:"user",content:[
-              {type:"image",source:{type:"base64",media_type:mediaType,data:base64}},
-              {type:"text",text:"Extract all menu items with names, prices, and descriptions from this menu photo. Return ONLY a JSON array."}
-            ]}]
-          })
+          body:JSON.stringify({base64,mediaType})
         });
         const data=await resp.json();
-        const text=data.content?.map(c=>c.text||"").join("")||"";
-        const clean=text.replace(/```json|```/g,"").trim();
-        const items=JSON.parse(clean);
-        if(Array.isArray(items)&&items.length>0){setScanResults(items)}
+        if(data.error&&(!data.items||data.items.length===0)){setScanError(data.error)}
+        else if(data.items&&data.items.length>0){setScanResults(data.items)}
         else{setScanError("Couldn't find menu items in this image. Try a clearer photo.")}
       }catch(e){setScanError("Failed to read menu. Try a clearer, well-lit photo.")}
       setScanning(false);
