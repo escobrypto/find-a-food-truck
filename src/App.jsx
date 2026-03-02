@@ -4,6 +4,7 @@ const G=`
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
 :root{--bg:#FAFAF8;--card:#FFFFFF;--ink:#1A1613;--sub:#6B6560;--mute:#9C9690;--line:#E8E4DF;--tint:#F4F1ED;--accent:#D4482C;--accentL:#FFF0ED;--sans:'Inter',system-ui,sans-serif;--serif:'Fraunces',Georgia,serif;--mono:'JetBrains Mono',monospace}
+html{scroll-behavior:smooth}
 body{font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
 ::selection{background:var(--accentL);color:var(--accent)}
 button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
@@ -14,6 +15,8 @@ a{text-decoration:none;color:inherit}
 @keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-33.33%)}}
 .ani{animation:fadeUp .5s ease both}
 .d1{animation-delay:.06s}.d2{animation-delay:.12s}.d3{animation-delay:.18s}
+
+button:focus-visible,input:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 `;
 
 function useRouter(){
@@ -23,6 +26,10 @@ function useRouter(){
     window.addEventListener("hashchange",h);
     return()=>window.removeEventListener("hashchange",h);
   },[]);
+  useEffect(()=>{
+    const titles={"/":" | Richmond's Food Truck Booking Network","/submit":" | Submit an Event","/join":" | Join as a Vendor","/access":" | Verified Vendor Access","/member":" | Vendor Portal","/admin":" | Admin"};
+    document.title="Find A Food Truck RVA"+(titles[r]||"");
+  },[r]);
   return{route:r,go:p=>{window.location.hash=p}}
 }
 
@@ -34,7 +41,7 @@ function Btn({children,onClick,variant="primary",full,size="md"}){
   const v={
     primary:{...s,...sz,background:"var(--ink)",color:"#fff"},
     accent:{...s,...sz,background:"var(--accent)",color:"#fff"},
-    outline:{...s,...sz,background:"var(--card)",color:"var(--ink)",border:"1px solid var(--line)"},
+    outline:{...s,...sz,background:"var(--card)",color:"var(--ink)",border:"1px solid var(--mute)"},
     ghost:{...s,...sz,color:"var(--sub)",border:"1px solid var(--line)"},
   }[variant];
   return<button onClick={onClick} style={v}>{children}</button>
@@ -50,7 +57,7 @@ function Input({label,value,onChange,placeholder,type="text",textarea,rows=3}){
 }
 
 function Chip({children,active,onClick}){
-  return<button onClick={onClick} style={{padding:"7px 13px",borderRadius:8,fontSize:12,fontWeight:500,border:"1px solid",borderColor:active?"var(--accent)":"var(--line)",background:active?"var(--accent)":"var(--card)",color:active?"#fff":"var(--sub)"}}>{children}</button>
+  return<button onClick={onClick} style={{padding:"7px 13px",borderRadius:8,fontSize:12,fontWeight:500,border:"1px solid",borderColor:active?"var(--accent)":"var(--line)",background:active?"var(--accent)":"var(--card)",color:active?"#fff":"var(--sub)",transition:"all .15s"}}>{children}</button>
 }
 
 function Nav({go,route}){
@@ -64,7 +71,7 @@ function Nav({go,route}){
         </div>
         <div style={{display:"flex",alignItems:"center",gap:28}} className="dsk">
           {[["Submit Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"]].map(([l,p])=>
-            <span key={p} onClick={()=>go(p)} style={{fontSize:13,fontWeight:500,color:route===p?"var(--ink)":"var(--mute)",cursor:"pointer"}}>{l}</span>
+            <span key={p} onClick={()=>go(p)} style={{fontSize:13,fontWeight:500,color:route===p?"var(--ink)":"var(--mute)",cursor:"pointer",transition:"color .15s"}} onMouseEnter={e=>e.currentTarget.style.color="var(--ink)"} onMouseLeave={e=>{if(route!==p)e.currentTarget.style.color="var(--mute)"}}>{l}</span>
           )}
         </div>
         <div style={{display:"flex",gap:8}} className="dsk">
@@ -72,13 +79,13 @@ function Nav({go,route}){
           <Btn variant="accent" size="sm" onClick={()=>go("/submit")}>Submit Event</Btn>
         </div>
         <button className="mobtn" onClick={()=>setOpen(!open)} style={{fontSize:20,padding:4}}>
-          {open?"\u2715":"\u2630"}
+          {open?"✕":"☰"}
         </button>
       </W>
     </nav>
     {open&&<div style={{position:"fixed",inset:0,top:54,background:"var(--bg)",zIndex:99,padding:"16px 20px"}}>
       {[["Submit an Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"],["Vendor Login","/member"]].map(([l,p])=>
-        <button key={p} onClick={()=>{go(p);setOpen(false)}} style={{display:"block",width:"100%",padding:"16px 0",fontSize:16,fontWeight:500,color:route===p?"var(--accent)":"var(--ink)",textAlign:"left",borderBottom:"1px solid var(--line)"}}>{l}</button>
+        <button key={p} onClick={()=>{go(p);setOpen(false)}} style={{display:"block",width:"100%",padding:"16px 0",fontSize:16,fontWeight:500,color:route===p?"var(--accent)":"var(--ink)",textAlign:"left",borderBottom:"1px solid var(--line)",transition:"color .15s"}}>{l}</button>
       )}
     </div>}
     <style>{`
@@ -100,13 +107,13 @@ function HomePage({go}){
           <Btn variant="accent" size="lg" full onClick={()=>go("/submit")}>Submit an Event</Btn>
           <Btn variant="outline" size="lg" full onClick={()=>go("/join")}>Join as a Vendor</Btn>
         </div>
-        <p className="ani d3" style={{fontSize:11,color:"var(--mute)",marginTop:16,fontStyle:"italic",fontFamily:"var(--serif)"}}>Serving corporate events, weddings, festivals, and everything in between.</p>
+        <p className="ani d3" style={{fontSize:12,color:"var(--mute)",marginTop:18,fontStyle:"italic",fontFamily:"var(--serif)"}}>Serving corporate events, weddings, festivals, and everything in between.</p>
       </W>
     </section>
 
     {/* Ticker */}
     <div style={{borderTop:"1px solid var(--line)",borderBottom:"1px solid var(--line)",padding:"10px 0",overflow:"hidden"}}>
-      <div style={{display:"flex",animation:"scroll 28s linear infinite",whiteSpace:"nowrap"}}>
+      <div style={{display:"flex",animation:"scroll 35s linear infinite",whiteSpace:"nowrap"}}>
         {[0,1,2].map(j=><div key={j} style={{display:"flex"}}>
           {["BBQ & Smoked Meats","Mexican / Latin","Southern / Soul Food","Asian Fusion","Breakfast & Brunch","Beverages & Dessert","Catering","Weddings","Corporate Events","Festivals"].map((t,i)=>
             <span key={i} style={{padding:"0 24px",fontSize:11,color:"var(--mute)",fontFamily:"var(--mono)"}}>{t}</span>
@@ -121,20 +128,20 @@ function HomePage({go}){
         <p className="ani" style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:10}}>HOW IT WORKS</p>
         <h2 className="ani d1" style={{fontSize:"clamp(24px,4vw,32px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:"clamp(32px,5vw,52px)"}}>Simple for hosts.<br/>Valuable for vendors.</h2>
         <div className="ani d2" style={{display:"flex",flexDirection:"column",gap:1,background:"var(--line)",borderRadius:12,overflow:"hidden"}}>
-          {[["For Event Hosts","Tell us your date, location, headcount, and requirements. We match you with verified vendors.","Submit an Event \u2192","/submit"],
-            ["For Vendors","Get listed for free. Receive qualified booking opportunities from hosts across Richmond.","Join the Network \u2192","/join"],
-            ["Direct Booking","No platform fees. No middlemen. Hosts and vendors connect directly.","Learn More \u2192","/access"]
+          {[["For Event Hosts","Tell us your date, location, headcount, and requirements. We match you with verified vendors.","Submit an Event →","/submit"],
+            ["For Vendors","Get listed for free. Receive qualified booking opportunities from hosts across Richmond.","Join the Network →","/join"],
+            ["Direct Booking","No platform fees. No middlemen. Hosts and vendors connect directly.","Learn More →","/access"]
           ].map(([t,d,c,l])=><div key={t} style={{background:"var(--card)",padding:"clamp(24px,3.5vw,36px)"}}>
             <h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>{t}</h3>
             <p style={{fontSize:13,color:"var(--sub)",lineHeight:1.7,marginBottom:14,fontWeight:300}}>{d}</p>
-            <span onClick={()=>go(l)} style={{fontSize:13,fontWeight:500,color:"var(--accent)",cursor:"pointer"}}>{c}</span>
+            <span onClick={()=>go(l)} style={{fontSize:13,fontWeight:500,color:"var(--accent)",cursor:"pointer",transition:"opacity .15s"}}>{c}</span>
           </div>)}
         </div>
       </W>
     </section>
 
     {/* Status */}
-    <section style={{padding:"clamp(48px,8vw,68px) 20px",borderTop:"1px solid var(--line)"}}>
+    <section style={{padding:"clamp(48px,8vw,68px) 20px",borderTop:"1px solid var(--line)",background:"var(--tint)"}}>
       <W style={{padding:0}}>
         <p style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:10}}>CURRENT STATUS</p>
         <h2 style={{fontSize:"clamp(22px,3.5vw,26px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:24}}>Now accepting</h2>
@@ -155,17 +162,17 @@ function HomePage({go}){
       <W style={{maxWidth:560,textAlign:"center",position:"relative",padding:0}}>
         <p className="ani" style={{fontSize:11,fontWeight:500,color:"rgba(255,255,255,.3)",letterSpacing:".08em",marginBottom:12}}>VERIFIED VENDOR ACCESS</p>
         <h2 className="ani d1" style={{fontSize:"clamp(22px,4vw,28px)",fontWeight:300,fontFamily:"var(--serif)",color:"#fff",margin:"0 0 14px"}}>Priority placement. Direct lead access. Category protection.</h2>
-        <p className="ani d2" style={{fontSize:14,color:"rgba(255,255,255,.4)",lineHeight:1.7,marginBottom:10,fontWeight:300}}>First access to booking requests, protected category placement, and featured visibility across the network.</p>
-        <p className="ani d2" style={{fontSize:13,color:"rgba(255,255,255,.25)",lineHeight:1.7,marginBottom:28,fontStyle:"italic",fontFamily:"var(--serif)"}}>Limited to 1–2 vendors per cuisine. When your slot is full, your competition is capped.</p>
-        <div className="ani d3"><Btn variant="accent" size="lg" onClick={()=>go("/access")}>Join the Waitlist</Btn></div>
+        <p className="ani d2" style={{fontSize:14,color:"rgba(255,255,255,.5)",lineHeight:1.7,marginBottom:12,fontWeight:300}}>First access to booking requests, protected category placement, and featured visibility across the network.</p>
+        <p className="ani d2" style={{fontSize:13,color:"rgba(255,255,255,.35)",lineHeight:1.7,marginBottom:28,fontStyle:"italic",fontFamily:"var(--serif)"}}>Limited to 1–2 vendors per cuisine. When your slot is full, your competition is capped.</p>
+        <div className="ani d3" style={{marginTop:4}}><Btn variant="accent" size="lg" onClick={()=>go("/access")}>Join the Waitlist</Btn></div>
       </W>
     </section>
 
     {/* CTA */}
-    <section style={{padding:"clamp(56px,10vw,88px) 20px",textAlign:"center"}}>
+    <section style={{padding:"clamp(56px,10vw,88px) 20px",textAlign:"center",borderTop:"1px solid var(--line)"}}>
       <W style={{maxWidth:460,padding:0}}>
         <h2 className="ani" style={{fontSize:"clamp(22px,4vw,26px)",fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 12px"}}>Richmond's food truck scene deserves better infrastructure.</h2>
-        <p className="ani d1" style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300,marginBottom:24}}>We're building it. Get in early.</p>
+        <p className="ani d1" style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300,marginBottom:24}}>We're building it. Get in early — whether you're hosting an event or running a truck.</p>
         <div className="ani d2" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:320,margin:"0 auto"}}>
           <Btn variant="accent" full onClick={()=>go("/submit")}>Submit an Event</Btn>
           <Btn variant="outline" full onClick={()=>go("/join")}>Join as a Vendor</Btn>
@@ -176,7 +183,7 @@ function HomePage({go}){
     {/* Numbers */}
     <section style={{padding:"clamp(48px,8vw,64px) 20px",borderTop:"1px solid var(--line)"}}>
       <W style={{display:"flex",justifyContent:"center",gap:"clamp(28px,6vw,64px)",padding:0,flexWrap:"wrap"}}>
-        {[["4,100+","Network members"],["$800–2,500","Avg. booking value"],["10","Verified slots"]].map(([v,l])=>
+        {[["4,100+","Network members"],["$800–2,500","Avg. booking"],["10","Verified vendor slots"]].map(([v,l])=>
           <div key={l} style={{textAlign:"center"}}>
             <div style={{fontSize:"clamp(22px,4vw,30px)",fontWeight:300,fontFamily:"var(--serif)",letterSpacing:"-.02em"}}>{v}</div>
             <div style={{fontSize:10,color:"var(--mute)",marginTop:4,fontFamily:"var(--mono)"}}>{l}</div>
@@ -192,7 +199,7 @@ function FormPage({go,title,subtitle,children}){
     <section style={{padding:"clamp(32px,5vw,56px) 20px clamp(48px,8vw,80px)"}}>
       <W style={{maxWidth:540,padding:0}}>
         <div className="ani" style={{marginBottom:24}}>
-          <span onClick={()=>go("/")} style={{fontSize:13,color:"var(--mute)",cursor:"pointer",display:"inline-block",marginBottom:10}}>{"\u2190"} Back</span>
+          <span onClick={()=>go("/")} style={{fontSize:13,color:"var(--mute)",cursor:"pointer",display:"inline-block",marginBottom:10}}>{"←"} Back</span>
           <h1 style={{fontSize:"clamp(22px,4vw,28px)",fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 4px"}}>{title}</h1>
           {subtitle&&<p style={{fontSize:13,color:"var(--sub)"}}>{subtitle}</p>}
         </div>
@@ -210,7 +217,7 @@ function SubmitEvent({go}){
   
   if(step===4)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
     <div className="ani" style={{textAlign:"center",maxWidth:380}}>
-      <div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div>
+      <div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px",animation:"fadeUp .4s ease"}}>{"✓"}</div>
       <h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Request submitted.</h2>
       <p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>Verified vendors will be notified. Expect responses within 24 hours.</p>
       <div style={{marginTop:28}}><Btn variant="outline" onClick={()=>go("/")}>Back to home</Btn></div>
@@ -218,7 +225,7 @@ function SubmitEvent({go}){
   </div>;
 
   return<FormPage go={go} title="Submit an Event" subtitle={`Step ${step} of 3`}>
-    <div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)"}}/>)}</div>
+    <div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)",transition:"background .3s"}}/>)}</div>
     <div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}>
       {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Event Details</h3>
         <div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Event Type</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{types.map(t=><Chip key={t} active={f.type===t} onClick={()=>u("type",t)}>{t}</Chip>)}</div></div>
@@ -253,7 +260,7 @@ function JoinVendor({go}){
   
   if(step===4)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:"20px"}}>
     <div className="ani" style={{textAlign:"center",maxWidth:380}}>
-      <div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div>
+      <div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px",animation:"fadeUp .4s ease"}}>{"✓"}</div>
       <h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>You're in the network.</h2>
       <p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>Log in to complete your profile and add your menu.</p>
       {f.waitlist&&<p style={{fontSize:12,fontWeight:500,background:"var(--accentL)",color:"var(--accent)",padding:"8px 14px",borderRadius:8,display:"inline-block",marginTop:10}}>Verified Vendor waitlist — applied</p>}
@@ -262,7 +269,7 @@ function JoinVendor({go}){
   </div>;
 
   return<FormPage go={go} title="Join as a Vendor" subtitle={`Step ${step} of 3 — Free to join`}>
-    <div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)"}}/>)}</div>
+    <div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)",transition:"background .3s"}}/>)}</div>
     <div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}>
       {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Business Info</h3>
         <Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck name"/>
@@ -311,10 +318,10 @@ function AccessPage({go}){
       <Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/>
       <div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cs.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div>
       <Input label="Why interested?" value={f.why} onChange={e=>u("why",e.target.value)} placeholder="About your truck..." textarea rows={3}/>
-      <Btn variant="accent" full onClick={()=>{if(f.name&&f.truck&&f.email&&f.cuisine)setDone(true)}}>Submit Application</Btn>
+      <Btn variant="accent" full onClick={()=>{if(f.name&&f.truck&&f.email&&f.cuisine)setDone(true);else{alert("Please fill in all required fields.")}}}>Submit Application</Btn>
     </div>
     :<div className="ani" style={{textAlign:"center",padding:"40px 0"}}>
-      <div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div>
+      <div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px",animation:"fadeUp .4s ease"}}>{"✓"}</div>
       <h3 style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Application received.</h3>
       <p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>We'll reach out when verified tier launches.</p>
       <div style={{marginTop:16,fontSize:12,color:"var(--mute)",fontFamily:"var(--mono)"}}>{f.truck} · {f.cuisine}</div>
@@ -346,7 +353,7 @@ function MemberDash({go}){
     <section style={{padding:"24px 20px 40px"}}><W style={{padding:0,maxWidth:920}}>
       <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24}}>
         <div><h1 style={{fontSize:20,fontWeight:400,fontFamily:"var(--serif)"}}>Vendor Dashboard</h1><p style={{fontSize:12,color:"var(--sub)",marginTop:2}}>Profile, menu, and visibility.</p></div>
-        <Btn variant="ghost" size="sm" onClick={()=>go("/")}>{"\u2190"} Site</Btn>
+        <Btn variant="ghost" size="sm" onClick={()=>go("/")}>{"←"} Site</Btn>
       </div>
       <div style={{display:"flex",gap:2,marginBottom:24,borderBottom:"1px solid var(--line)"}}>{["profile","menu"].map(t=><button key={t} onClick={()=>setTab(t)} style={{padding:"10px 14px",fontSize:13,fontWeight:500,color:tab===t?"var(--ink)":"var(--mute)",borderBottom:tab===t?"2px solid var(--accent)":"2px solid transparent",textTransform:"capitalize"}}>{t}</button>)}</div>
       {tab==="profile"&&<div style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(16px,3vw,28px)",maxWidth:520}}>
@@ -379,9 +386,9 @@ function MemberDash({go}){
 
 function AdminLogin({onLogin}){const[pw,setPw]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div className="ani" style={{width:"100%",maxWidth:320,padding:28,borderRadius:10,background:"#141414",border:"1px solid #222",textAlign:"center"}}><h2 style={{fontSize:18,fontWeight:500,color:"#fff",marginBottom:20}}>Admin Access</h2>{e&&<p style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid.</p>}<input value={pw} onChange={ev=>setPw(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&(onLogin(pw)||void(sE(true),setPw("")))} type="password" placeholder="Password" style={{width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid #333",fontSize:14,background:"#0A0A0A",color:"#fff",marginBottom:10,textAlign:"center"}}/><button onClick={()=>onLogin(pw)||void(sE(true),setPw(""))} style={{width:"100%",padding:11,borderRadius:8,background:"#fff",color:"#000",fontSize:14,fontWeight:500}}>Enter</button></div></div>}
 
-function PinGate({onUnlock,onCancel}){const[pin,setPin]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div style={{width:"100%",maxWidth:280,textAlign:"center"}}><h2 style={{fontSize:16,fontWeight:500,color:"#fff",marginBottom:20}}>Security PIN</h2>{e&&<p style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid PIN.</p>}<input value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(pin===SP?onUnlock():(sE(true),setPin("")))} type="password" maxLength={4} placeholder="\u2022\u2022\u2022\u2022" style={{width:"100%",padding:12,borderRadius:8,border:"1px solid #333",fontSize:22,letterSpacing:10,background:"#0A0A0A",color:"#fff",textAlign:"center",marginBottom:14}}/><div style={{display:"flex",gap:8}}><button onClick={onCancel} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #333",color:"#666",fontSize:13}}>Cancel</button><button onClick={()=>pin===SP?onUnlock():(sE(true),setPin(""))} style={{flex:1,padding:10,borderRadius:8,background:"#fff",color:"#000",fontSize:13,fontWeight:500}}>Unlock</button></div></div></div>}
+function PinGate({onUnlock,onCancel}){const[pin,setPin]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div style={{width:"100%",maxWidth:280,textAlign:"center"}}><h2 style={{fontSize:16,fontWeight:500,color:"#fff",marginBottom:20}}>Security PIN</h2>{e&&<p style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid PIN.</p>}<input value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(pin===SP?onUnlock():(sE(true),setPin("")))} type="password" maxLength={4} placeholder="••••" style={{width:"100%",padding:12,borderRadius:8,border:"1px solid #333",fontSize:22,letterSpacing:10,background:"#0A0A0A",color:"#fff",textAlign:"center",marginBottom:14}}/><div style={{display:"flex",gap:8}}><button onClick={onCancel} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #333",color:"#666",fontSize:13}}>Cancel</button><button onClick={()=>pin===SP?onUnlock():(sE(true),setPin(""))} style={{flex:1,padding:10,borderRadius:8,background:"#fff",color:"#000",fontSize:13,fontWeight:500}}>Unlock</button></div></div></div>}
 
-function AdminDash({go}){return<div style={{minHeight:"100vh",background:"#0A0A0A",padding:"40px 20px",color:"#fff"}}><W style={{maxWidth:920,padding:0}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:32}}><h1 style={{fontSize:18,fontWeight:500}}>FAFTRVA Admin</h1><button onClick={()=>go("/")} style={{color:"#666",fontSize:12,border:"1px solid #333",padding:"7px 14px",borderRadius:8}}>{"\u2190"} Site</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12,marginBottom:32}}>{[["Event Submissions","0","Pending"],["Vendor Applications","0","Pending"],["Waitlist","0","Applications"]].map(([t,v,l])=><div key={t} style={{background:"#141414",borderRadius:8,padding:16,border:"1px solid #222"}}><div style={{fontSize:10,color:"#666",marginBottom:6,fontFamily:"var(--mono)"}}>{t}</div><div style={{fontSize:24,fontWeight:300}}>{v}</div><div style={{fontSize:10,color:"#444",marginTop:2}}>{l}</div></div>)}</div><p style={{color:"#444",fontSize:12}}>Populates as submissions arrive.</p></W></div>}
+function AdminDash({go}){return<div style={{minHeight:"100vh",background:"#0A0A0A",padding:"40px 20px",color:"#fff"}}><W style={{maxWidth:920,padding:0}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:32}}><h1 style={{fontSize:18,fontWeight:500}}>FAFTRVA Admin</h1><button onClick={()=>go("/")} style={{color:"#666",fontSize:12,border:"1px solid #333",padding:"7px 14px",borderRadius:8}}>{"←"} Site</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12,marginBottom:32}}>{[["Event Submissions","0","Pending"],["Vendor Applications","0","Pending"],["Waitlist","0","Applications"]].map(([t,v,l])=><div key={t} style={{background:"#141414",borderRadius:8,padding:16,border:"1px solid #222"}}><div style={{fontSize:10,color:"#666",marginBottom:6,fontFamily:"var(--mono)"}}>{t}</div><div style={{fontSize:24,fontWeight:300}}>{v}</div><div style={{fontSize:10,color:"#444",marginTop:2}}>{l}</div></div>)}</div><p style={{color:"#444",fontSize:12}}>Populates as submissions arrive.</p></W></div>}
 
 function Footer({go}){
   return<footer style={{borderTop:"1px solid var(--line)",padding:"32px 20px 24px"}}>
@@ -390,12 +397,13 @@ function Footer({go}){
         <div style={{minWidth:200,flex:"2 1 200px"}}>
           <div style={{display:"flex",alignItems:"baseline",gap:5}}><span style={{fontFamily:"var(--serif)",fontSize:15,fontStyle:"italic"}}>find a</span><span style={{fontFamily:"var(--serif)",fontSize:15,fontWeight:500,color:"var(--accent)"}}>food truck</span></div>
           <p style={{fontSize:11,color:"var(--sub)",marginTop:6,lineHeight:1.6,fontWeight:300}}>Richmond's booking network for food trucks and events.</p>
-          <p style={{fontSize:10,color:"var(--mute)",marginTop:8,fontFamily:"var(--mono)"}}>Laurence Ash LLC</p>
+          <p style={{fontSize:10,color:"var(--mute)",marginTop:4}}>findafoodtruckrva.com</p>
+          <p style={{fontSize:10,color:"var(--sub)",marginTop:8,fontFamily:"var(--mono)"}}>Laurence Ash LLC</p>
         </div>
         {[["Network",[["Submit Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"]]],["Account",[["Vendor Login","/member"],["Admin","/admin"]]]].map(([t,items])=>
           <div key={t} style={{minWidth:120}}>
             <h4 style={{fontSize:10,fontWeight:500,color:"var(--mute)",letterSpacing:".06em",marginBottom:10}}>{t.toUpperCase()}</h4>
-            {items.map(([l,to])=><div key={l} onClick={()=>go(to)} style={{color:"var(--sub)",fontSize:12,cursor:"pointer",padding:"2px 0",fontWeight:300}}>{l}</div>)}
+            {items.map(([l,to])=><div key={l} onClick={()=>go(to)} style={{color:"var(--sub)",fontSize:12,cursor:"pointer",padding:"3px 0",fontWeight:300,transition:"color .15s"}} onMouseEnter={e=>e.currentTarget.style.color="var(--ink)"} onMouseLeave={e=>e.currentTarget.style.color="var(--sub)"}>{l}</div>)}
           </div>
         )}
       </div>
@@ -414,8 +422,8 @@ export default function App(){
   if(route==="/admin"){if(!a)return<><style>{G}</style><AdminLogin onLogin={pw=>{if(pw===AP){sA(true);return true}return false}}/></>;if(!p)return<><style>{G}</style><PinGate onUnlock={()=>sP(true)} onCancel={()=>{sA(false);go("/")}}/></>;return<><style>{G}</style><AdminDash go={go}/></>}
   return<div style={{background:"var(--bg)",minHeight:"100vh"}}><style>{G}</style><Nav go={go} route={route}/>
     {route==="/"&&<><HomePage go={go}/><Footer go={go}/></>}
-    {route==="/submit"&&<><SubmitEvent go={go}/><Footer go={go}/></>}
-    {route==="/join"&&<><JoinVendor go={go}/><Footer go={go}/></>}
-    {route==="/access"&&<><AccessPage go={go}/><Footer go={go}/></>}
+    {(route==="/submit"||route==="/book")&&<><SubmitEvent go={go}/><Footer go={go}/></>}
+    {(route==="/join"||route==="/vendors")&&<><JoinVendor go={go}/><Footer go={go}/></>}
+    {(route==="/access"||route==="/pricing"||route==="/waitlist"||route==="/verified")&&<><AccessPage go={go}/><Footer go={go}/></>}
   </div>
 }
