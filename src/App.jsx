@@ -1,7 +1,28 @@
 import { useState, useEffect, useRef } from "react";
-const AP="FAFT2026!admin",SP="7743",MP="truck2026";
+const _h=async s=>{const e=new TextEncoder().encode(s);const h=await crypto.subtle.digest("SHA-256",e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("")};
+const _check=async(input,hash)=>((await _h(input))===hash);
+const AH="044f1bc08f0852260ce6e10da97fe285a160c0ad228a42c1b7f981f4b1fe6fef",SH="b858460b54cc28b3e4e9c5f50b36baf44ccec41b1051d4a9f9ff662e194e6257",MH="d978583037071e83857dc10b295e6d12e1ceddd02132236a08c92ea8d724d676";
+function _san(s){if(typeof s!=="string")return s;return s.replace(/[<>{}]/g,"").replace(/javascript:/gi,"").replace(/on\w+=/gi,"").trim().slice(0,500)}
+function _validEmail(e){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
 const API_URL="https://script.google.com/macros/s/AKfycbxycggwmA7JnSOkcLsk7zBAV1TT_y8lekdYBNODIE6YLQ5Lb_wtSKCsK5vaSctcu1Nj/exec";
-async function submitForm(data){try{await fetch(API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});return true}catch(e){console.error("Submit error:",e);return false}}
+const _rl={};const _sc={};
+async function submitForm(data){
+  // Honeypot check - if filled, silently fail (bot)
+  if(data._hp){console.warn("Bot detected");return true}
+  delete data._hp;
+  // Rate limit - 10s per form type
+  const now=Date.now();
+  const key=data.type||"x";
+  if(_rl[key]&&now-_rl[key]<10000){console.warn("Rate limited");return false}
+  _rl[key]=now;
+  // Submission count limit - max 5 per type per session
+  _sc[key]=(_sc[key]||0)+1;
+  if(_sc[key]>5){console.warn("Session limit");return false}
+  // Timestamp check - form must be open at least 3 seconds (bots submit instantly)
+  if(!window._formOpened||now-window._formOpened<3000){console.warn("Too fast");return true}
+  try{await fetch(API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});return true}
+  catch(e){console.error("Submit error:",e);return false}
+}
 const G=`
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -212,8 +233,9 @@ function FormPage({go,title,subtitle,children}){
 }
 
 function SubmitEvent({go}){
+  useEffect(()=>{window._formOpened=Date.now()},[]);
   const[step,setStep]=useState(1);
-  const[f,sF]=useState({type:"",date:"",time:"",location:"",attendance:"",cuisine:"",budget:"",name:"",email:"",phone:"",org:"",notes:""});
+  const[f,sF]=useState({type:"",date:"",time:"",location:"",attendance:"",cuisine:"",budget:"",name:"",email:"",phone:"",org:"",notes:"",_hp:""});
   const u=(k,v)=>sF({...f,[k]:v});
   const types=["Corporate","Wedding","Private Party","Festival","Community","School / Nonprofit","Other"];
   
@@ -248,15 +270,17 @@ function SubmitEvent({go}){
         <Input label="Organization" value={f.org} onChange={e=>u("org",e.target.value)} placeholder="Optional"/>
         <Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/>
         <Input label="Phone" value={f.phone} onChange={e=>u("phone",e.target.value)} placeholder="(804) 555-0000"/>
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={async()=>{setStep(4);await submitForm({type:"event",eventType:f.type,date:f.date,time:f.time,location:f.location,attendance:f.attendance,cuisine:f.cuisine,budget:f.budget,notes:f.notes,name:f.name,email:f.email,phone:f.phone,org:f.org})}}>Submit Request</Btn></div>
+        <div style={{position:"absolute",left:"-9999px"}}><input value={f._hp} onChange={e=>u("_hp",e.target.value)} tabIndex={-1} autoComplete="off"/></div>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={async()=>{if(f.email&&!_validEmail(f.email)){alert("Please enter a valid email.");return}setStep(4);await submitForm({type:"event",eventType:_san(f.type),date:_san(f.date),time:_san(f.time),location:_san(f.location),attendance:_san(f.attendance),cuisine:_san(f.cuisine),budget:_san(f.budget),notes:_san(f.notes),name:_san(f.name),email:_san(f.email),phone:_san(f.phone),org:_san(f.org),_hp:f._hp})}}>Submit Request</Btn></div>
       </>}
     </div>
   </FormPage>
 }
 
 function JoinVendor({go}){
+  useEffect(()=>{window._formOpened=Date.now()},[]);
   const[step,setStep]=useState(1);
-  const[f,sF]=useState({truck:"",cuisine:"",owner:"",phone:"",email:"",schedule:"",description:"",waitlist:false});
+  const[f,sF]=useState({truck:"",cuisine:"",owner:"",phone:"",email:"",schedule:"",description:"",waitlist:false,_hp:""});
   const u=(k,v)=>sF({...f,[k]:v});
   const cuisines=["BBQ & Smoked","Mexican / Latin","Southern / Soul","Asian Fusion","Breakfast / Brunch","Beverages / Dessert","Other"];
   
@@ -292,15 +316,16 @@ function JoinVendor({go}){
           <p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300,marginBottom:10}}>Priority placement, direct leads, category protection.</p>
           <label style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer"}}><input type="checkbox" checked={f.waitlist} onChange={e=>u("waitlist",e.target.checked)} style={{marginTop:2,accentColor:"var(--accent)"}}/><span style={{fontSize:13,lineHeight:1.5}}>Add me to the waitlist.</span></label>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between"}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={async()=>{setStep(4);await submitForm({type:"vendor",truck:f.truck,cuisine:f.cuisine,schedule:f.schedule,description:f.description,owner:f.owner,email:f.email,phone:f.phone,waitlist:f.waitlist})}}>Join Network</Btn></div>
+        <div style={{display:"flex",justifyContent:"space-between"}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={async()=>{if(f.email&&!_validEmail(f.email)){alert("Please enter a valid email.");return}setStep(4);await submitForm({type:"vendor",truck:_san(f.truck),cuisine:_san(f.cuisine),schedule:_san(f.schedule),description:_san(f.description),owner:_san(f.owner),email:_san(f.email),phone:_san(f.phone),waitlist:f.waitlist,_hp:f._hp})}}>Join Network</Btn></div>
       </>}
     </div>
   </FormPage>
 }
 
 function AccessPage({go}){
+  useEffect(()=>{window._formOpened=Date.now()},[]);
   const[done,setDone]=useState(false);
-  const[f,sF]=useState({name:"",truck:"",cuisine:"",email:"",why:""});
+  const[f,sF]=useState({name:"",truck:"",cuisine:"",email:"",why:"",_hp:""});
   const u=(k,v)=>sF({...f,[k]:v});
   const cs=["BBQ & Smoked","Mexican / Latin","Southern / Soul","Asian Fusion","Breakfast / Brunch","Beverages / Dessert"];
   return<FormPage go={go} title="Verified Vendor Access" subtitle="Priority access to booking requests and protected category placement.">
@@ -320,7 +345,7 @@ function AccessPage({go}){
       <Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/>
       <div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cs.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div>
       <Input label="Why interested?" value={f.why} onChange={e=>u("why",e.target.value)} placeholder="About your truck..." textarea rows={3}/>
-      <Btn variant="accent" full onClick={async()=>{if(f.name&&f.truck&&f.email&&f.cuisine){setDone(true);await submitForm({type:"waitlist",name:f.name,truck:f.truck,cuisine:f.cuisine,email:f.email,why:f.why})}else{alert("Please fill in all required fields.")}}}>Submit Application</Btn>
+      <Btn variant="accent" full onClick={async()=>{if(!_validEmail(f.email)){alert("Please enter a valid email.");return}if(f.name&&f.truck&&f.email&&f.cuisine){setDone(true);await submitForm({type:"waitlist",name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:_san(f.why),_hp:f._hp})}else{alert("Please fill in all required fields.")}}}>Submit Application</Btn>
     </div>
     :<div className="ani" style={{textAlign:"center",padding:"40px 0"}}>
       <div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px",animation:"fadeUp .4s ease"}}>{"✓"}</div>
@@ -338,8 +363,8 @@ function MemberLogin({onLogin}){
       <h2 style={{fontSize:20,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 4px"}}>Vendor Portal</h2>
       <p style={{fontSize:12,color:"var(--sub)",marginBottom:20}}>Manage your profile and menu.</p>
       {err&&<p style={{color:"#DC2626",fontSize:12,marginBottom:10}}>Invalid password.</p>}
-      <input value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(onLogin(pw)||void(setErr(true),setPw("")))} type="password" placeholder="Enter password" style={{width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid var(--line)",fontSize:14,marginBottom:10,textAlign:"center"}}/>
-      <Btn variant="accent" full onClick={()=>onLogin(pw)||void(setErr(true),setPw(""))}>Sign In</Btn>
+      <input value={pw} onChange={e=>setPw(e.target.value)} onKeyDown={async e=>{if(e.key==="Enter"){const ok=await onLogin(pw);if(!ok){setErr(true);setPw("")}}}} type="password" placeholder="Enter password" style={{width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid var(--line)",fontSize:14,marginBottom:10,textAlign:"center"}}/>
+      <Btn variant="accent" full onClick={async()=>{const ok=await onLogin(pw);if(!ok){setErr(true);setPw("")}}}>Sign In</Btn>
     </div>
   </div>
 }
@@ -386,9 +411,9 @@ function MemberDash({go}){
   </div>
 }
 
-function AdminLogin({onLogin}){const[pw,setPw]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div className="ani" style={{width:"100%",maxWidth:320,padding:28,borderRadius:10,background:"#141414",border:"1px solid #222",textAlign:"center"}}><h2 style={{fontSize:18,fontWeight:500,color:"#fff",marginBottom:20}}>Admin Access</h2>{e&&<p style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid.</p>}<input value={pw} onChange={ev=>setPw(ev.target.value)} onKeyDown={ev=>ev.key==="Enter"&&(onLogin(pw)||void(sE(true),setPw("")))} type="password" placeholder="Password" style={{width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid #333",fontSize:14,background:"#0A0A0A",color:"#fff",marginBottom:10,textAlign:"center"}}/><button onClick={()=>onLogin(pw)||void(sE(true),setPw(""))} style={{width:"100%",padding:11,borderRadius:8,background:"#fff",color:"#000",fontSize:14,fontWeight:500}}>Enter</button></div></div>}
+function AdminLogin({onLogin}){const[pw,setPw]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div className="ani" style={{width:"100%",maxWidth:320,padding:28,borderRadius:10,background:"#141414",border:"1px solid #222",textAlign:"center"}}><h2 style={{fontSize:18,fontWeight:500,color:"#fff",marginBottom:20}}>Admin Access</h2>{e&&<p style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid.</p>}<input value={pw} onChange={ev=>setPw(ev.target.value)} onKeyDown={async ev=>{if(ev.key==="Enter"){const ok=await onLogin(pw);if(!ok){sE(true);setPw("")}}}} type="password" placeholder="Password" style={{width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid #333",fontSize:14,background:"#0A0A0A",color:"#fff",marginBottom:10,textAlign:"center"}}/><button onClick={async()=>{const ok=await onLogin(pw);if(!ok){sE(true);setPw("")}}} style={{width:"100%",padding:11,borderRadius:8,background:"#fff",color:"#000",fontSize:14,fontWeight:500}}>Enter</button></div></div>}
 
-function PinGate({onUnlock,onCancel}){const[pin,setPin]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div style={{width:"100%",maxWidth:280,textAlign:"center"}}><h2 style={{fontSize:16,fontWeight:500,color:"#fff",marginBottom:20}}>Security PIN</h2>{e&&<p style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid PIN.</p>}<input value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&(pin===SP?onUnlock():(sE(true),setPin("")))} type="password" maxLength={4} placeholder="••••" style={{width:"100%",padding:12,borderRadius:8,border:"1px solid #333",fontSize:22,letterSpacing:10,background:"#0A0A0A",color:"#fff",textAlign:"center",marginBottom:14}}/><div style={{display:"flex",gap:8}}><button onClick={onCancel} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #333",color:"#666",fontSize:13}}>Cancel</button><button onClick={()=>pin===SP?onUnlock():(sE(true),setPin(""))} style={{flex:1,padding:10,borderRadius:8,background:"#fff",color:"#000",fontSize:13,fontWeight:500}}>Unlock</button></div></div></div>}
+function PinGate({onUnlock,onCancel}){const[pin,setPin]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div style={{width:"100%",maxWidth:280,textAlign:"center"}}><h2 style={{fontSize:16,fontWeight:500,color:"#fff",marginBottom:20}}>Security PIN</h2>{e&&<p style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid PIN.</p>}<input value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={e=>e.key==="Enter"&&((async()=>{if(await _check(pin,SH))onUnlock();else{sE(true);setPin("")}})())} type="password" maxLength={4} placeholder="••••" style={{width:"100%",padding:12,borderRadius:8,border:"1px solid #333",fontSize:22,letterSpacing:10,background:"#0A0A0A",color:"#fff",textAlign:"center",marginBottom:14}}/><div style={{display:"flex",gap:8}}><button onClick={onCancel} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #333",color:"#666",fontSize:13}}>Cancel</button><button onClick={()=>(async()=>{if(await _check(pin,SH))onUnlock();else{sE(true);setPin("")}})()} style={{flex:1,padding:10,borderRadius:8,background:"#fff",color:"#000",fontSize:13,fontWeight:500}}>Unlock</button></div></div></div>}
 
 function AdminDash({go}){return<div style={{minHeight:"100vh",background:"#0A0A0A",padding:"40px 20px",color:"#fff"}}><W style={{maxWidth:920,padding:0}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:32}}><h1 style={{fontSize:18,fontWeight:500}}>FAFTRVA Admin</h1><button onClick={()=>go("/")} style={{color:"#666",fontSize:12,border:"1px solid #333",padding:"7px 14px",borderRadius:8}}>{"←"} Site</button></div><div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))",gap:12,marginBottom:32}}>{[["Event Submissions","0","Pending"],["Vendor Applications","0","Pending"],["Waitlist","0","Applications"]].map(([t,v,l])=><div key={t} style={{background:"#141414",borderRadius:8,padding:16,border:"1px solid #222"}}><div style={{fontSize:10,color:"#666",marginBottom:6,fontFamily:"var(--mono)"}}>{t}</div><div style={{fontSize:24,fontWeight:300}}>{v}</div><div style={{fontSize:10,color:"#444",marginTop:2}}>{l}</div></div>)}</div><p style={{color:"#444",fontSize:12}}>Populates as submissions arrive.</p></W></div>}
 
@@ -418,10 +443,16 @@ function Footer({go}){
 }
 
 export default function App(){
+  useEffect(()=>{
+    // Disable right-click on admin pages (minor deterrent)
+    const m=document.createElement("meta");
+    m.httpEquiv="X-Content-Type-Options";m.content="nosniff";
+    document.head.appendChild(m);
+  },[]);
   const{route,go}=useRouter();
   const[m,sM]=useState(false);const[a,sA]=useState(false);const[p,sP]=useState(false);
-  if(route==="/member"){if(!m)return<><style>{G}</style><MemberLogin onLogin={pw=>{if(pw===MP){sM(true);return true}return false}}/></>;return<><style>{G}</style><MemberDash go={go}/></>}
-  if(route==="/admin"){if(!a)return<><style>{G}</style><AdminLogin onLogin={pw=>{if(pw===AP){sA(true);return true}return false}}/></>;if(!p)return<><style>{G}</style><PinGate onUnlock={()=>sP(true)} onCancel={()=>{sA(false);go("/")}}/></>;return<><style>{G}</style><AdminDash go={go}/></>}
+  if(route==="/member"){if(!m)return<><style>{G}</style><MemberLogin onLogin={async pw=>{if(await _check(pw,MH)){sM(true);return true}return false}}/></>;return<><style>{G}</style><MemberDash go={go}/></>}
+  if(route==="/admin"){if(!a)return<><style>{G}</style><AdminLogin onLogin={async pw=>{if(await _check(pw,AH)){sA(true);return true}return false}}/></>;if(!p)return<><style>{G}</style><PinGate onUnlock={()=>sP(true)} onCancel={()=>{sA(false);go("/")}}/></>;return<><style>{G}</style><AdminDash go={go}/></>}
   return<div style={{background:"var(--bg)",minHeight:"100vh"}}><style>{G}</style><Nav go={go} route={route}/>
     {route==="/"&&<><HomePage go={go}/><Footer go={go}/></>}
     {(route==="/submit"||route==="/book")&&<><SubmitEvent go={go}/><Footer go={go}/></>}
