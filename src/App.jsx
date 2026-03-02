@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 const AP="FAFT2026!admin",SP="7743",MP="truck2026";
+const API_URL="https://script.google.com/macros/s/AKfycbxycggwmA7JnSOkcLsk7zBAV1TT_y8lekdYBNODIE6YLQ5Lb_wtSKCsK5vaSctcu1Nj/exec";
+async function submitForm(data){try{await fetch(API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});return true}catch(e){console.error("Submit error:",e);return false}}
 const G=`
 @import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -246,7 +248,7 @@ function SubmitEvent({go}){
         <Input label="Organization" value={f.org} onChange={e=>u("org",e.target.value)} placeholder="Optional"/>
         <Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/>
         <Input label="Phone" value={f.phone} onChange={e=>u("phone",e.target.value)} placeholder="(804) 555-0000"/>
-        <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={()=>setStep(4)}>Submit Request</Btn></div>
+        <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={async()=>{setStep(4);await submitForm({type:"event",eventType:f.type,date:f.date,time:f.time,location:f.location,attendance:f.attendance,cuisine:f.cuisine,budget:f.budget,notes:f.notes,name:f.name,email:f.email,phone:f.phone,org:f.org})}}>Submit Request</Btn></div>
       </>}
     </div>
   </FormPage>
@@ -290,7 +292,7 @@ function JoinVendor({go}){
           <p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300,marginBottom:10}}>Priority placement, direct leads, category protection.</p>
           <label style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer"}}><input type="checkbox" checked={f.waitlist} onChange={e=>u("waitlist",e.target.checked)} style={{marginTop:2,accentColor:"var(--accent)"}}/><span style={{fontSize:13,lineHeight:1.5}}>Add me to the waitlist.</span></label>
         </div>
-        <div style={{display:"flex",justifyContent:"space-between"}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={()=>setStep(4)}>Join Network</Btn></div>
+        <div style={{display:"flex",justifyContent:"space-between"}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={async()=>{setStep(4);await submitForm({type:"vendor",truck:f.truck,cuisine:f.cuisine,schedule:f.schedule,description:f.description,owner:f.owner,email:f.email,phone:f.phone,waitlist:f.waitlist})}}>Join Network</Btn></div>
       </>}
     </div>
   </FormPage>
@@ -318,7 +320,7 @@ function AccessPage({go}){
       <Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/>
       <div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cs.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div>
       <Input label="Why interested?" value={f.why} onChange={e=>u("why",e.target.value)} placeholder="About your truck..." textarea rows={3}/>
-      <Btn variant="accent" full onClick={()=>{if(f.name&&f.truck&&f.email&&f.cuisine)setDone(true);else{alert("Please fill in all required fields.")}}}>Submit Application</Btn>
+      <Btn variant="accent" full onClick={async()=>{if(f.name&&f.truck&&f.email&&f.cuisine){setDone(true);await submitForm({type:"waitlist",name:f.name,truck:f.truck,cuisine:f.cuisine,email:f.email,why:f.why})}else{alert("Please fill in all required fields.")}}}>Submit Application</Btn>
     </div>
     :<div className="ani" style={{textAlign:"center",padding:"40px 0"}}>
       <div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px",animation:"fadeUp .4s ease"}}>{"✓"}</div>
