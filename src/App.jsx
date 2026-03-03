@@ -21,8 +21,19 @@ const AH="044f1bc08f0852260ce6e10da97fe285a160c0ad228a42c1b7f981f4b1fe6fef";
 const SH="b858460b54cc28b3e4e9c5f50b36baf44ccec41b1051d4a9f9ff662e194e6257";
 const API_URL="https://script.google.com/macros/s/AKfycbxycggwmA7JnSOkcLsk7zBAV1TT_y8lekdYBNODIE6YLQ5Lb_wtSKCsK5vaSctcu1Nj/exec";
 
-function _san(s){if(typeof s!=="string")return s;return s.replace(/[<>{}]/g,"").replace(/javascript:/gi,"").trim().slice(0,500)}
+/* --- SECURITY: Sanitizer with event handler stripping --- */
+function _san(s){if(typeof s!=="string")return s;return s.replace(/[<>{}]/g,"").replace(/javascript:/gi,"").replace(/on\w+\s*=/gi,"").trim().slice(0,500)}
 function _validEmail(e){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
+
+/* --- SECURITY: Session submission limiter (max 5 per form type) --- */
+const _sessionCounts={};
+function _canSubmit(formType){if(!_sessionCounts[formType])_sessionCounts[formType]=0;if(_sessionCounts[formType]>=5)return false;_sessionCounts[formType]++;return true}
+
+/* --- SECURITY: Timing check helper (3sec minimum) --- */
+function _timingOk(){if(!window._formOpened)return false;return(Date.now()-window._formOpened)>=3000}
+
+/* --- SECURITY: Honeypot check --- */
+function _honeypotClean(val){return!val||val.trim()===""}
 
 const _rl={};
 async function submitToSheet(data){
@@ -51,6 +62,7 @@ a{text-decoration:none;color:inherit}
 .d1{animation-delay:.06s}.d2{animation-delay:.12s}.d3{animation-delay:.18s}
 button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 .mobtn{display:none}
+._hp_field{opacity:0;position:absolute;top:0;left:0;height:0;width:0;z-index:-1;overflow:hidden;pointer-events:none;tabindex:-1}
 @media(max-width:768px){.dsk{display:none!important}.mobtn{display:block!important}}
 `;
 
@@ -73,6 +85,11 @@ function Btn({children,onClick,variant="primary",full,size="md",disabled}){
 function Input({label,value,onChange,placeholder,type="text",textarea,rows=3}){
   const s={width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid var(--line)",fontSize:14,color:"var(--ink)",background:"var(--card)",marginBottom:14};
   return<div>{label&&<label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:5,letterSpacing:".02em"}}>{label}</label>}{textarea?<textarea value={value} onChange={onChange} placeholder={placeholder} style={{...s,resize:"vertical",fontFamily:"var(--sans)"}} rows={rows}/>:<input value={value} onChange={onChange} placeholder={placeholder} type={type} style={{...s,fontFamily:"var(--sans)"}}/>}</div>
+}
+
+/* --- SECURITY: Honeypot hidden input component --- */
+function HoneypotField({value,onChange}){
+  return<div className="_hp_field" aria-hidden="true"><input type="text" name="_hp" autoComplete="off" tabIndex={-1} value={value} onChange={onChange}/></div>
 }
 
 function Chip({children,active,onClick}){return<button onClick={onClick} style={{padding:"7px 13px",borderRadius:8,fontSize:12,fontWeight:500,border:"1px solid",borderColor:active?"var(--accent)":"var(--line)",background:active?"var(--accent)":"var(--card)",color:active?"#fff":"var(--sub)",transition:"all .15s"}}>{children}</button>}
@@ -187,12 +204,35 @@ function FormPage({go,title,subtitle,children}){
 
 function SubmitEvent({go}){
   const[step,setStep]=useState(1);const[loading,setLoading]=useState(false);
-  const[f,sF]=useState({type:"",date:"",time:"",location:"",attendance:"",cuisine:"",budget:"",name:"",email:"",phone:"",org:"",notes:""});
+  const[f,sF]=useState({type:"",date:"",time:"",location:"",attendance:"",cuisine:"",budget:"",name:"",email:"",phone:"",org:"",notes:"",_hp:""});
   const u=(k,v)=>sF({...f,[k]:v});
   const types=["Corporate","Wedding","Private Party","Festival","Community","School / Nonprofit","Other"];
-  const submit=async()=>{if(!_validEmail(f.email)){alert("Enter a valid email.");return}setLoading(true);try{await addDoc(collection(db,"events"),{eventType:f.type,date:f.date,time:f.time,location:f.location,attendance:f.attendance,cuisine:f.cuisine,budget:f.budget,notes:f.notes,name:f.name,email:f.email,phone:f.phone,org:f.org,status:"new",createdAt:serverTimestamp()});submitToSheet({type:"event",eventType:_san(f.type),date:_san(f.date),time:_san(f.time),location:_san(f.location),attendance:_san(f.attendance),cuisine:_san(f.cuisine),budget:_san(f.budget),notes:_san(f.notes),name:_san(f.name),email:_san(f.email),phone:_san(f.phone),org:_san(f.org)});setStep(4)}catch(e){alert("Something went wrong.")}setLoading(false)};
+
+  /* SECURITY: Set form open timestamp on mount */
+  useEffect(()=>{window._formOpened=Date.now()},[]);
+
+  const submit=async()=>{
+    /* SECURITY: Honeypot check */
+    if(!_honeypotClean(f._hp))return;
+    /* SECURITY: Timing check - 3sec minimum */
+    if(!_timingOk()){alert("Please take a moment to review your submission.");return}
+    /* SECURITY: Session limit - max 5 event submissions */
+    if(!_canSubmit("event")){alert("Submission limit reached for this session.");return}
+    if(!_validEmail(f.email)){alert("Enter a valid email.");return}
+    setLoading(true);
+    try{
+      await addDoc(collection(db,"events"),{eventType:f.type,date:f.date,time:f.time,location:f.location,attendance:f.attendance,cuisine:f.cuisine,budget:f.budget,notes:f.notes,name:f.name,email:f.email,phone:f.phone,org:f.org,status:"new",createdAt:serverTimestamp()});
+      submitToSheet({type:"event",eventType:_san(f.type),date:_san(f.date),time:_san(f.time),location:_san(f.location),attendance:_san(f.attendance),cuisine:_san(f.cuisine),budget:_san(f.budget),notes:_san(f.notes),name:_san(f.name),email:_san(f.email),phone:_san(f.phone),org:_san(f.org)});
+      setStep(4);
+    }catch(e){alert("Something went wrong.")}
+    setLoading(false);
+  };
+
   if(step===4)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:380}}><div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"✓"}</div><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Request submitted.</h2><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>Verified vendors get notified first. Expect responses within 24 hours.</p><div style={{marginTop:28}}><Btn variant="outline" onClick={()=>go("/")}>Back to home</Btn></div></div></div>;
+
   return<FormPage go={go} title="Submit an Event" subtitle={`Step ${step} of 3`}><div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)"}}/>)}</div><div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}>
+    {/* SECURITY: Honeypot field */}
+    <HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/>
     {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Event Details</h3><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Event Type</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{types.map(t=><Chip key={t} active={f.type===t} onClick={()=>u("type",t)}>{t}</Chip>)}</div></div><Input label="Date" value={f.date} onChange={e=>u("date",e.target.value)} type="date"/><Input label="Time" value={f.time} onChange={e=>u("time",e.target.value)} placeholder="e.g. 4-8 PM"/><Input label="Location" value={f.location} onChange={e=>u("location",e.target.value)} placeholder="Venue or address"/><Input label="Guests" value={f.attendance} onChange={e=>u("attendance",e.target.value)} placeholder="Expected attendance" type="number"/><div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}><Btn variant="accent" onClick={()=>setStep(2)}>Continue</Btn></div></>}
     {step===2&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Requirements</h3><Input label="Cuisine" value={f.cuisine} onChange={e=>u("cuisine",e.target.value)} placeholder="e.g. BBQ, Mexican, Any"/><Input label="Budget" value={f.budget} onChange={e=>u("budget",e.target.value)} placeholder="e.g. $-,000"/><Input label="Details" value={f.notes} onChange={e=>u("notes",e.target.value)} placeholder="Dietary needs, setup, # of trucks..." textarea rows={4}/><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(1)}>Back</Btn><Btn variant="accent" onClick={()=>setStep(3)}>Continue</Btn></div></>}
     {step===3&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Contact</h3><Input label="Name" value={f.name} onChange={e=>u("name",e.target.value)} placeholder="Full name"/><Input label="Organization" value={f.org} onChange={e=>u("org",e.target.value)} placeholder="Optional"/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/><Input label="Phone" value={f.phone} onChange={e=>u("phone",e.target.value)} placeholder="(804) 555-0000"/><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={submit} disabled={loading}>{loading?"Submitting...":"Submit Request"}</Btn></div></>}
@@ -200,11 +240,43 @@ function SubmitEvent({go}){
 
 function JoinVendor({go}){
   const[step,setStep]=useState(1);const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
-  const[f,sF]=useState({truck:"",cuisine:"",owner:"",phone:"",email:"",password:"",schedule:"",description:"",waitlist:false});
+  const[f,sF]=useState({truck:"",cuisine:"",owner:"",phone:"",email:"",password:"",schedule:"",description:"",waitlist:false,_hp:""});
   const u=(k,v)=>sF({...f,[k]:v});const cuisines=["BBQ & Smoked","Mexican / Latin","Southern / Soul","Asian Fusion","Breakfast / Brunch","Beverages / Dessert","Other"];
-  const submit=async()=>{if(!_validEmail(f.email)){alert("Enter a valid email.");return}if(!f.password||f.password.length<6){alert("Password needs 6+ characters.");return}setLoading(true);setErr("");try{const cred=await createUserWithEmailAndPassword(auth,f.email,f.password);await setDoc(doc(db,"vendors",cred.user.uid),{email:f.email,truck:_san(f.truck),cuisine:_san(f.cuisine),schedule:_san(f.schedule),description:_san(f.description),owner:_san(f.owner),phone:_san(f.phone),menu:[],status:"pending",tier:"free",waitlist:f.waitlist,createdAt:serverTimestamp()});submitToSheet({type:"vendor",truck:_san(f.truck),cuisine:_san(f.cuisine),schedule:_san(f.schedule),description:_san(f.description),owner:_san(f.owner),email:_san(f.email),phone:_san(f.phone),waitlist:f.waitlist});if(f.waitlist){await addDoc(collection(db,"waitlist"),{name:_san(f.owner),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:"Applied during signup",status:"new",createdAt:serverTimestamp()});submitToSheet({type:"waitlist",name:_san(f.owner),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:"Applied during signup"})}setStep(4)}catch(e){if(e.code==="auth/email-already-in-use")setErr("Email already registered. Try logging in.");else setErr(e.message||"Something went wrong.")}setLoading(false)};
+
+  /* SECURITY: Set form open timestamp on mount */
+  useEffect(()=>{window._formOpened=Date.now()},[]);
+
+  const submit=async()=>{
+    /* SECURITY: Honeypot check */
+    if(!_honeypotClean(f._hp))return;
+    /* SECURITY: Timing check */
+    if(!_timingOk()){alert("Please take a moment to review your submission.");return}
+    /* SECURITY: Session limit */
+    if(!_canSubmit("vendor")){alert("Submission limit reached for this session.");return}
+    if(!_validEmail(f.email)){alert("Enter a valid email.");return}
+    if(!f.password||f.password.length<6){alert("Password needs 6+ characters.");return}
+    setLoading(true);setErr("");
+    try{
+      const cred=await createUserWithEmailAndPassword(auth,f.email,f.password);
+      await setDoc(doc(db,"vendors",cred.user.uid),{email:f.email,truck:_san(f.truck),cuisine:_san(f.cuisine),schedule:_san(f.schedule),description:_san(f.description),owner:_san(f.owner),phone:_san(f.phone),menu:[],status:"pending",tier:"free",waitlist:f.waitlist,createdAt:serverTimestamp()});
+      submitToSheet({type:"vendor",truck:_san(f.truck),cuisine:_san(f.cuisine),schedule:_san(f.schedule),description:_san(f.description),owner:_san(f.owner),email:_san(f.email),phone:_san(f.phone),waitlist:f.waitlist});
+      if(f.waitlist){
+        await addDoc(collection(db,"waitlist"),{name:_san(f.owner),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:"Applied during signup",status:"new",createdAt:serverTimestamp()});
+        submitToSheet({type:"waitlist",name:_san(f.owner),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:"Applied during signup"});
+      }
+      setStep(4);
+    }catch(e){
+      if(e.code==="auth/email-already-in-use")setErr("Email already registered. Try logging in.");
+      else setErr(e.message||"Something went wrong.");
+    }
+    setLoading(false);
+  };
+
   if(step===4)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:380}}><div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Application submitted!</h2><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>Pending approval. We review fast. Log in to check status.</p>{f.waitlist&&<p style={{fontSize:12,fontWeight:500,background:"var(--accentL)",color:"var(--accent)",padding:"8px 14px",borderRadius:8,display:"inline-block",marginTop:10}}>Verified waitlist applied</p>}<div style={{marginTop:28,display:"flex",gap:8,justifyContent:"center"}}><Btn variant="accent" onClick={()=>go("/dashboard")}>Dashboard</Btn><Btn variant="outline" onClick={()=>go("/")}>Home</Btn></div></div></div>;
+
   return<FormPage go={go} title="Join as a Vendor" subtitle={`Step ${step} of 3`}><div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)"}}/>)}</div>{err&&<div style={{background:"#FFEBEE",color:"#C62828",padding:"10px 14px",borderRadius:8,fontSize:13,marginBottom:16}}>{err}</div>}<div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}>
+    {/* SECURITY: Honeypot field */}
+    <HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/>
     {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Business Info</h3><Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck name"/><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cuisines.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div><Input label="Schedule" value={f.schedule} onChange={e=>u("schedule",e.target.value)} placeholder="e.g. Tue-Sat 11am-8pm"/><Input label="Description" value={f.description} onChange={e=>u("description",e.target.value)} placeholder="What you serve..." textarea rows={3}/><div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}><Btn variant="accent" onClick={()=>setStep(2)}>Continue</Btn></div></>}
     {step===2&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Your Account</h3><Input label="Owner Name" value={f.owner} onChange={e=>u("owner",e.target.value)} placeholder="Full name"/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/><Input label="Create Password" value={f.password} onChange={e=>u("password",e.target.value)} placeholder="At least 6 characters" type="password"/><Input label="Phone" value={f.phone} onChange={e=>u("phone",e.target.value)} placeholder="(804) 555-0000"/><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(1)}>Back</Btn><Btn variant="accent" onClick={()=>setStep(3)}>Continue</Btn></div></>}
     {step===3&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Verified Access</h3><div style={{background:"var(--tint)",borderRadius:8,padding:16,marginBottom:18,border:"1px solid var(--line)"}}><h4 style={{fontSize:13,fontWeight:600,marginBottom:4}}>Verified Vendor tier. Launching soon.</h4><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300,marginBottom:10}}>Priority placement, direct leads, category protection.</p><label style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer"}}><input type="checkbox" checked={f.waitlist} onChange={e=>u("waitlist",e.target.checked)} style={{marginTop:2,accentColor:"var(--accent)"}}/><span style={{fontSize:13,lineHeight:1.5}}>Add me to the waitlist.</span></label></div><div style={{display:"flex",justifyContent:"space-between"}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={submit} disabled={loading}>{loading?"Creating...":"Join Network"}</Btn></div></>}
@@ -235,12 +307,36 @@ function VendorDashboard({go,user}){
 
 function AccessPage({go}){
   const[done,setDone]=useState(false);const[loading,setLoading]=useState(false);
-  const[f,sF]=useState({name:"",truck:"",cuisine:"",email:"",why:""});const u=(k,v)=>sF({...f,[k]:v});
+  const[f,sF]=useState({name:"",truck:"",cuisine:"",email:"",why:"",_hp:""});const u=(k,v)=>sF({...f,[k]:v});
   const cs=["BBQ & Smoked","Mexican / Latin","Southern / Soul","Asian Fusion","Breakfast / Brunch","Beverages / Dessert"];
-  const submit=async()=>{if(!f.name||!f.truck||!f.email||!f.cuisine){alert("Fill in all fields.");return}if(!_validEmail(f.email)){alert("Valid email required.");return}setLoading(true);try{await addDoc(collection(db,"waitlist"),{name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:_san(f.why),status:"new",createdAt:serverTimestamp()});submitToSheet({type:"waitlist",name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:_san(f.why)});setDone(true)}catch(e){alert("Something went wrong.")}setLoading(false)};
+
+  /* SECURITY: Set form open timestamp on mount */
+  useEffect(()=>{window._formOpened=Date.now()},[]);
+
+  const submit=async()=>{
+    /* SECURITY: Honeypot check */
+    if(!_honeypotClean(f._hp))return;
+    /* SECURITY: Timing check */
+    if(!_timingOk()){alert("Please take a moment to review your submission.");return}
+    /* SECURITY: Session limit */
+    if(!_canSubmit("waitlist")){alert("Submission limit reached for this session.");return}
+    if(!f.name||!f.truck||!f.email||!f.cuisine){alert("Fill in all fields.");return}
+    if(!_validEmail(f.email)){alert("Valid email required.");return}
+    setLoading(true);
+    try{
+      await addDoc(collection(db,"waitlist"),{name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:_san(f.why),status:"new",createdAt:serverTimestamp()});
+      submitToSheet({type:"waitlist",name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:_san(f.why)});
+      setDone(true);
+    }catch(e){alert("Something went wrong.")}
+    setLoading(false);
+  };
+
   return<FormPage go={go} title="Verified Vendor Access" subtitle="Priority access to booking requests and protected category placement.">
     <div className="ani d1" style={{display:"flex",flexDirection:"column",gap:1,background:"var(--line)",borderRadius:10,overflow:"hidden",marginBottom:32}}>{[["Priority Placement","Appear first to event hosts."],["Direct Lead Routing","Requests matched to your cuisine."],["Category Protection","Limited slots. Competition capped."],["Featured Visibility","Prominent in directory and matching."]].map(([t,d])=><div key={t} style={{background:"var(--card)",padding:"clamp(18px,3vw,28px)"}}><h3 style={{fontSize:13,fontWeight:600,marginBottom:3}}>{t}</h3><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300}}>{d}</p></div>)}</div>
-    {!done?<div className="ani d2" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}><h3 style={{fontSize:17,fontWeight:300,fontFamily:"var(--serif)",marginBottom:4}}>Join the waitlist</h3><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,marginBottom:20}}>Limited per cuisine category.</p><Input label="Your Name" value={f.name} onChange={e=>u("name",e.target.value)} placeholder="Full name"/><Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck"/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cs.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div><Input label="Why interested?" value={f.why} onChange={e=>u("why",e.target.value)} placeholder="About your truck..." textarea rows={3}/><Btn variant="accent" full onClick={submit} disabled={loading}>{loading?"Submitting...":"Submit Application"}</Btn></div>
+    {!done?<div className="ani d2" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}><h3 style={{fontSize:17,fontWeight:300,fontFamily:"var(--serif)",marginBottom:4}}>Join the waitlist</h3><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,marginBottom:20}}>Limited per cuisine category.</p>
+      {/* SECURITY: Honeypot field */}
+      <HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/>
+      <Input label="Your Name" value={f.name} onChange={e=>u("name",e.target.value)} placeholder="Full name"/><Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck"/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cs.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div><Input label="Why interested?" value={f.why} onChange={e=>u("why",e.target.value)} placeholder="About your truck..." textarea rows={3}/><Btn variant="accent" full onClick={submit} disabled={loading}>{loading?"Submitting...":"Submit Application"}</Btn></div>
     :<div className="ani" style={{textAlign:"center",padding:"40px 0"}}><div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div><h3 style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Application received.</h3><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>We'll reach out when verified tier launches.</p></div>}
   </FormPage>}
 
@@ -270,6 +366,17 @@ function Footer({go}){return<footer style={{borderTop:"1px solid var(--line)",pa
 
 export default function App(){
   const{route,go}=useRouter();const[user,setUser]=useState(null);const[vendorData,setVendorData]=useState(null);const[authLoading,setAuthLoading]=useState(true);const[adminAuth,setAdminAuth]=useState(false);const[adminPin,setAdminPin]=useState(false);
+
+  /* --- SECURITY: Content Security Policy meta tag --- */
+  useEffect(()=>{
+    if(!document.querySelector('meta[http-equiv="Content-Security-Policy"]')){
+      const meta=document.createElement("meta");
+      meta.httpEquiv="Content-Security-Policy";
+      meta.content="default-src 'self'; script-src 'self' https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://script.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src https://*.firebaseapp.com https://apis.google.com; img-src 'self' data: https:; object-src 'none'; base-uri 'self'";
+      document.head.appendChild(meta);
+    }
+  },[]);
+
   useEffect(()=>{const unsub=onAuthStateChanged(auth,async(u)=>{setUser(u);if(u){try{const snap=await getDoc(doc(db,"vendors",u.uid));if(snap.exists())setVendorData(snap.data())}catch(e){}}else{setVendorData(null)}setAuthLoading(false)});return unsub},[]);
   if(authLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)"}}><style>{G}</style><Loader/></div>;
   if(route==="/admin"){if(!adminAuth)return<><style>{G}</style><AdminLogin onLogin={async pw=>{if(await _check(pw,AH)){setAdminAuth(true);return true}return false}}/></>;if(!adminPin)return<><style>{G}</style><PinGate onUnlock={()=>setAdminPin(true)} onCancel={()=>{setAdminAuth(false);go("/")}}/></>;return<><style>{G}</style><AdminDash go={go}/></>}
