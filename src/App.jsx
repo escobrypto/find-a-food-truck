@@ -600,7 +600,7 @@ function AdminDash({go}){
       <h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Security</h1>
       <p style={{fontSize:13,color:_c.t4,marginBottom:24}}>Active defenses and form protection status.</p>
       {[
-        {name:"Honeypot Fields",status:"ACTIVE",desc:"Hidden _hp input on all 3 forms. Bot submissions silently dropped.",icon:"\ud83c\udf af",color:_c.green},
+        {name:"Honeypot Fields",status:"ACTIVE",desc:"Hidden _hp input on all 3 forms. Bot submissions silently dropped.",icon:"\ud83c\udfaf",color:_c.green},
         {name:"Session Limiting",status:"ACTIVE",desc:"Max 5 submissions per form type per session. Counter: event/vendor/waitlist.",icon:"\ud83d\udd12",color:_c.green},
         {name:"Timing Gate",status:"ACTIVE",desc:"3-second minimum before submit allowed. window._formOpened set on mount.",icon:"\u23f1\ufe0f",color:_c.green},
         {name:"Input Sanitizer",status:"ACTIVE",desc:"Strips <>{}, javascript: URIs, and on*= event handlers from all inputs. 500 char limit.",icon:"\ud83e\uddf9",color:_c.green},
