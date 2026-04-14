@@ -1,686 +1,272 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { initializeApp } from "firebase/app";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } from "firebase/auth";
-import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, query, orderBy, onSnapshot, serverTimestamp } from "firebase/firestore";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail } from "firebase/auth";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, addDoc, updateDoc, deleteDoc, query, where, orderBy, onSnapshot, serverTimestamp, limit } from "firebase/firestore";
 
-const firebaseConfig = {
-  apiKey: "AIzaSyDswWtfAtWMm6NWjY1d7gckTX9c4FSjED0",
-  authDomain: "faftrva.firebaseapp.com",
-  projectId: "faftrva",
-  storageBucket: "faftrva.firebasestorage.app",
-  messagingSenderId: "1072657509195",
-  appId: "1:1072657509195:web:48be516231d56d305156ce"
-};
-const fbApp = initializeApp(firebaseConfig);
-const auth = getAuth(fbApp);
-const db = getFirestore(fbApp);
+const firebaseConfig={apiKey:"AIzaSyDswWtfAtWMm6NWjY1d7gckTX9c4FSjED0",authDomain:"faftrva.firebaseapp.com",projectId:"faftrva",storageBucket:"faftrva.firebasestorage.app",messagingSenderId:"1072657509195",appId:"1:1072657509195:web:48be516231d56d305156ce"};
+const fbApp=initializeApp(firebaseConfig);const auth=getAuth(fbApp);const db=getFirestore(fbApp);
 
+/* Security */
 const _h=async s=>{const e=new TextEncoder().encode(s);const h=await crypto.subtle.digest("SHA-256",e);return Array.from(new Uint8Array(h)).map(b=>b.toString(16).padStart(2,"0")).join("")};
-const _check=async(input,hash)=>((await _h(input))===hash);
+const _check=async(i,h)=>((await _h(i))===h);
 const AH="044f1bc08f0852260ce6e10da97fe285a160c0ad228a42c1b7f981f4b1fe6fef";
 const SH="b858460b54cc28b3e4e9c5f50b36baf44ccec41b1051d4a9f9ff662e194e6257";
 const API_URL="https://script.google.com/macros/s/AKfycbxycggwmA7JnSOkcLsk7zBAV1TT_y8lekdYBNODIE6YLQ5Lb_wtSKCsK5vaSctcu1Nj/exec";
-
-/* --- SECURITY: Sanitizer with event handler stripping --- */
 function _san(s){if(typeof s!=="string")return s;return s.replace(/[<>{}]/g,"").replace(/javascript:/gi,"").replace(/on\w+\s*=/gi,"").trim().slice(0,500)}
 function _validEmail(e){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
-
-/* --- SECURITY: Session submission limiter (max 5 per form type) --- */
-const _sessionCounts={};
-function _canSubmit(formType){if(!_sessionCounts[formType])_sessionCounts[formType]=0;if(_sessionCounts[formType]>=5)return false;_sessionCounts[formType]++;return true}
-
-/* --- SECURITY: Timing check helper (3sec minimum) --- */
+function _fmtPhone(v){const d=v.replace(/\D/g,"").slice(0,10);if(d.length<=3)return d;if(d.length<=6)return"("+d.slice(0,3)+") "+d.slice(3);return"("+d.slice(0,3)+") "+d.slice(3,6)+"-"+d.slice(6)}
+function _todayStr(){return new Date().toISOString().split("T")[0]}
+function _timeAgo(ts){if(!ts)return"";const d=ts.toDate?ts.toDate():new Date(ts);const s=Math.floor((Date.now()-d.getTime())/1000);if(s<60)return"just now";if(s<3600)return Math.floor(s/60)+"m ago";if(s<86400)return Math.floor(s/3600)+"h ago";const dy=Math.floor(s/86400);return dy===1?"yesterday":dy+"d ago"}
+function _daysSince(ts){if(!ts)return null;const d=ts.toDate?ts.toDate():new Date(ts);return Math.floor((Date.now()-d.getTime())/86400000)}
+const _sc={};function _canSubmit(ft){if(!_sc[ft])_sc[ft]=0;if(_sc[ft]>=5)return false;_sc[ft]++;return true}
 function _timingOk(){if(!window._formOpened)return false;return(Date.now()-window._formOpened)>=3000}
+function _honeypotClean(v){return!v||v.trim()===""}
+function _genToken(){return crypto.randomUUID?crypto.randomUUID().split("-").slice(0,2).join(""):Math.random().toString(36).slice(2,10)+Date.now().toString(36)}
+function _profilePct(v){if(!v)return 0;const f=["truck","cuisine","owner","phone","schedule","description"];return Math.round((f.filter(k=>v[k]&&v[k].trim()).length/f.length)*100)}
+function _cuisineMatch(ec,vc){if(!ec||!vc)return false;const e=ec.toLowerCase(),v=vc.toLowerCase();if(e.includes("any")||e.includes("open"))return true;return v.split("/")[0].trim().split(" ").some(w=>e.includes(w))||e.split("/")[0].trim().split(" ").some(w=>v.includes(w))}
+function _cuisineEmoji(c){if(!c)return"\ud83d\ude9a";const m={"BBQ":"\ud83c\udf56","Mexican":"\ud83c\udf2e","Latin":"\ud83c\udf2e","Asian":"\ud83c\udf5c","Southern":"\ud83c\udf57","Soul":"\ud83c\udf57","Breakfast":"\ud83e\uddc7","Beverage":"\ud83e\uddc3","Dessert":"\ud83e\uddc3"};for(const[k,e]of Object.entries(m))if(c.includes(k))return e;return"\ud83d\ude9a"}
+const _rl={};async function submitToSheet(data){const now=Date.now();const key=data.type||"x";if(_rl[key]&&now-_rl[key]<10000)return false;_rl[key]=now;try{await fetch(API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});return true}catch{return false}}
+const MAX_RESP=5;const CUISINES=["BBQ & Smoked","Mexican / Latin","Southern / Soul","Asian Fusion","Breakfast / Brunch","Beverages / Dessert","Other"];const ETYPES=["Corporate","Wedding","Private Party","Festival","Community","School / Nonprofit","Other"];
 
-/* --- SECURITY: Honeypot check --- */
-function _honeypotClean(val){return!val||val.trim()===""}
+const G="@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');*{box-sizing:border-box;margin:0;padding:0}html{scroll-behavior:smooth}:root{--bg:#FAFAF8;--card:#FFFFFF;--ink:#1A1613;--sub:#6B6560;--mute:#9C9690;--line:#E8E4DF;--tint:#F4F1ED;--accent:#D4482C;--accentL:#FFF0ED;--sans:'Inter',system-ui,sans-serif;--serif:'Fraunces',Georgia,serif;--mono:'JetBrains Mono',monospace;--green:#2D8C3C;--greenL:#E8F5E9;--blue:#2563EB;--blueL:#EFF6FF;--orange:#E65100;--orangeL:#FFF3E0}body{font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}::selection{background:var(--accentL);color:var(--accent)}button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}input,textarea,select{font-family:var(--sans);outline:none}input:focus,textarea:focus,select:focus{border-color:var(--accent)!important}a{text-decoration:none;color:inherit}@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-33.33%)}}@keyframes spin{to{transform:rotate(360deg)}}.ani{animation:fadeUp .5s ease both}.d1{animation-delay:.06s}.d2{animation-delay:.12s}.d3{animation-delay:.18s}button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}.mobtn{display:none}._hp_field{opacity:0;position:absolute;top:0;left:0;height:0;width:0;z-index:-1;overflow:hidden;pointer-events:none}.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:12px 24px;border-radius:10px;font-size:13px;font-weight:500;z-index:9999;animation:fadeUp .3s ease;pointer-events:none}@media(max-width:768px){.dsk{display:none!important}.mobtn{display:block!important}}";
 
-const _rl={};
-async function submitToSheet(data){
-  const now=Date.now();const key=data.type||"x";
-  if(_rl[key]&&now-_rl[key]<10000)return false;
-  _rl[key]=now;
-  try{await fetch(API_URL,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain"},body:JSON.stringify(data)});return true}
-  catch(e){return false}
-}
+/* Hooks */
+function useRouter(){const[r,setR]=useState(window.location.hash.slice(1)||"/");useEffect(()=>{const h=()=>{setR(window.location.hash.slice(1)||"/");window.scrollTo(0,0)};window.addEventListener("hashchange",h);return()=>window.removeEventListener("hashchange",h)},[]);useEffect(()=>{const t={"/":" | Richmond's Food Truck Booking Network","/submit":" | Submit an Event","/join":" | Join as a Vendor","/access":" | Verified Vendor Access","/login":" | Vendor Login","/dashboard":" | Vendor Dashboard","/admin":""};document.title="Find A Food Truck RVA"+(t[r]||"")},[r]);return{route:r,go:p=>{window.location.hash=p}}}
+function useToast(){const[msg,setMsg]=useState(null);const show=useCallback(m=>{setMsg(m);setTimeout(()=>setMsg(null),3000)},[]);const Toast=()=>msg?<div className="toast">{msg}</div>:null;return{show,Toast}}
 
-const G=`
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;1,9..144,300;1,9..144,400&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
-*{box-sizing:border-box;margin:0;padding:0}
-html{scroll-behavior:smooth}
-:root{--bg:#FAFAF8;--card:#FFFFFF;--ink:#1A1613;--sub:#6B6560;--mute:#9C9690;--line:#E8E4DF;--tint:#F4F1ED;--accent:#D4482C;--accentL:#FFF0ED;--sans:'Inter',system-ui,sans-serif;--serif:'Fraunces',Georgia,serif;--mono:'JetBrains Mono',monospace;--green:#2D8C3C}
-body{font-family:var(--sans);color:var(--ink);background:var(--bg);-webkit-font-smoothing:antialiased;overflow-x:hidden}
-::selection{background:var(--accentL);color:var(--accent)}
-button{cursor:pointer;border:none;background:none;font-family:inherit;color:inherit}
-input,textarea,select{font-family:var(--sans);outline:none}
-input:focus,textarea:focus{border-color:var(--accent)!important}
-a{text-decoration:none;color:inherit}
-@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-@keyframes scroll{0%{transform:translateX(0)}100%{transform:translateX(-33.33%)}}
-@keyframes spin{to{transform:rotate(360deg)}}
-.ani{animation:fadeUp .5s ease both}
-.d1{animation-delay:.06s}.d2{animation-delay:.12s}.d3{animation-delay:.18s}
-button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-.mobtn{display:none}
-._hp_field{opacity:0;position:absolute;top:0;left:0;height:0;width:0;z-index:-1;overflow:hidden;pointer-events:none;tabindex:-1}
-@media(max-width:768px){.dsk{display:none!important}.mobtn{display:block!important}}
-`;
-
-function useRouter(){
-  const[r,setR]=useState(window.location.hash.slice(1)||"/");
-  useEffect(()=>{const h=()=>{setR(window.location.hash.slice(1)||"/");window.scrollTo(0,0)};window.addEventListener("hashchange",h);return()=>window.removeEventListener("hashchange",h)},[]);
-  useEffect(()=>{const t={"/":" | Richmond's Food Truck Booking Network","/submit":" | Submit an Event","/join":" | Join as a Vendor","/access":" | Verified Vendor Access","/login":" | Vendor Login","/dashboard":" | Vendor Dashboard","/admin":""};document.title="Find A Food Truck RVA"+(t[r]||"")},[r]);
-  return{route:r,go:p=>{window.location.hash=p}}
-}
-
+/* UI Primitives */
 const W=({children,style={},...p})=><div style={{maxWidth:1080,margin:"0 auto",padding:"0 20px",...style}} {...p}>{children}</div>;
-
-function Btn({children,onClick,variant="primary",full,size="md",disabled}){
-  const s={display:"inline-flex",alignItems:"center",justifyContent:"center",borderRadius:8,fontWeight:500,fontFamily:"var(--sans)",transition:"all .15s",letterSpacing:"-.01em",width:full?"100%":undefined,opacity:disabled?.5:1,pointerEvents:disabled?"none":"auto"};
-  const sz={sm:{fontSize:13,padding:"9px 18px"},md:{fontSize:14,padding:"11px 22px"},lg:{fontSize:15,padding:"13px 28px"}}[size];
-  const v={primary:{...s,...sz,background:"var(--ink)",color:"#fff"},accent:{...s,...sz,background:"var(--accent)",color:"#fff"},outline:{...s,...sz,background:"var(--card)",color:"var(--ink)",border:"1px solid var(--mute)"},ghost:{...s,...sz,color:"var(--sub)",border:"1px solid var(--line)"},danger:{...s,...sz,background:"#DC2626",color:"#fff"},success:{...s,...sz,background:"var(--green)",color:"#fff"}}[variant];
-  return<button onClick={onClick} style={v} disabled={disabled}>{children}</button>
-}
-
-function Input({label,value,onChange,placeholder,type="text",textarea,rows=3}){
-  const s={width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid var(--line)",fontSize:14,color:"var(--ink)",background:"var(--card)",marginBottom:14};
-  return<div>{label&&<label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:5,letterSpacing:".02em"}}>{label}</label>}{textarea?<textarea value={value} onChange={onChange} placeholder={placeholder} style={{...s,resize:"vertical",fontFamily:"var(--sans)"}} rows={rows}/>:<input value={value} onChange={onChange} placeholder={placeholder} type={type} style={{...s,fontFamily:"var(--sans)"}}/>}</div>
-}
-
-/* --- SECURITY: Honeypot hidden input component --- */
-function HoneypotField({value,onChange}){
-  return<div className="_hp_field" aria-hidden="true"><input type="text" name="_hp" autoComplete="off" tabIndex={-1} value={value} onChange={onChange}/></div>
-}
-
+function Btn({children,onClick,variant="primary",full,size="md",disabled,style:xs={}}){const base={display:"inline-flex",alignItems:"center",justifyContent:"center",gap:6,borderRadius:8,fontWeight:500,transition:"all .15s",width:full?"100%":undefined,opacity:disabled?.5:1,pointerEvents:disabled?"none":"auto"};const sz={sm:{fontSize:13,padding:"8px 16px"},md:{fontSize:14,padding:"11px 22px"},lg:{fontSize:15,padding:"13px 28px"}}[size];const v={primary:{background:"var(--ink)",color:"#fff"},accent:{background:"var(--accent)",color:"#fff"},outline:{background:"var(--card)",color:"var(--ink)",border:"1px solid var(--line)"},ghost:{color:"var(--sub)",border:"1px solid var(--line)"},danger:{background:"#DC2626",color:"#fff"},success:{background:"var(--green)",color:"#fff"},blue:{background:"var(--blue)",color:"#fff"}}[variant];return<button onClick={onClick} style={{...base,...sz,...v,...xs}} disabled={disabled}>{children}</button>}
+function Input({label,value,onChange,placeholder,type="text",textarea,rows=3,disabled,error,hint,required}){const s={width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid "+(error?"#DC2626":"var(--line)"),fontSize:14,color:"var(--ink)",background:disabled?"var(--tint)":"var(--card)",marginBottom:error||hint?4:14,transition:"border-color .15s"};return<div style={{marginBottom:error||hint?14:0}}>{label&&<label style={{display:"flex",fontSize:12,fontWeight:500,color:error?"#DC2626":"var(--sub)",marginBottom:5}}>{label}{required&&<span style={{color:"var(--accent)",marginLeft:2}}>*</span>}</label>}{textarea?<textarea value={value} onChange={onChange} placeholder={placeholder} style={{...s,resize:"vertical",fontFamily:"var(--sans)"}} rows={rows} disabled={disabled}/>:<input value={value} onChange={onChange} placeholder={placeholder} type={type} style={s} disabled={disabled} min={type==="date"?_todayStr():undefined}/>}{error&&<p style={{fontSize:11,color:"#DC2626",marginBottom:10}}>{error}</p>}{hint&&!error&&<p style={{fontSize:11,color:"var(--mute)",marginBottom:10}}>{hint}</p>}</div>}
+function HoneypotField({value,onChange}){return<div className="_hp_field" aria-hidden="true"><input type="text" name="_hp" autoComplete="off" tabIndex={-1} value={value} onChange={onChange}/></div>}
 function Chip({children,active,onClick}){return<button onClick={onClick} style={{padding:"7px 13px",borderRadius:8,fontSize:12,fontWeight:500,border:"1px solid",borderColor:active?"var(--accent)":"var(--line)",background:active?"var(--accent)":"var(--card)",color:active?"#fff":"var(--sub)",transition:"all .15s"}}>{children}</button>}
-
-function Badge({text,color="green"}){const c={green:{bg:"#E8F5E9",t:"#2D8C3C"},orange:{bg:"#FFF3E0",t:"#E65100"},red:{bg:"#FFEBEE",t:"#C62828"},gray:{bg:"var(--tint)",t:"var(--mute)"},accent:{bg:"var(--accentL)",t:"var(--accent)"}}[color]||{bg:"var(--tint)",t:"var(--mute)"};return<span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:4,background:c.bg,color:c.t,fontFamily:"var(--mono)"}}>{text}</span>}
-
-function StatusBadge({status}){const m={pending:["Pending","orange"],approved:["Approved","green"],rejected:["Rejected","red"],new:["New","accent"],matched:["Matched","green"],closed:["Closed","gray"]};const[t,c]=m[status]||["Unknown","gray"];return<Badge text={t} color={c}/>}
-
+function Badge({text,color="green"}){const c={green:{bg:"var(--greenL)",t:"var(--green)"},orange:{bg:"var(--orangeL)",t:"var(--orange)"},red:{bg:"#FFEBEE",t:"#C62828"},gray:{bg:"var(--tint)",t:"var(--mute)"},accent:{bg:"var(--accentL)",t:"var(--accent)"},blue:{bg:"var(--blueL)",t:"var(--blue)"}}[color]||{bg:"var(--tint)",t:"var(--mute)"};return<span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:4,background:c.bg,color:c.t,fontFamily:"var(--mono)",whiteSpace:"nowrap"}}>{text}</span>}
+function StatusBadge({status}){const m={pending:["Pending","orange"],approved:["Approved","green"],rejected:["Rejected","red"],new:["New","accent"],matched:["Matched","green"],booked:["Booked","blue"],closed:["Closed","gray"],sent:["Sent","blue"],accepted:["Accepted","green"],declined:["Declined","red"]};const[t,c]=m[status]||["Unknown","gray"];return<Badge text={t} color={c}/>}
 function Loader(){return<div style={{display:"flex",justifyContent:"center",padding:40}}><div style={{width:24,height:24,border:"2px solid var(--line)",borderTopColor:"var(--accent)",borderRadius:"50%",animation:"spin .6s linear infinite"}}/></div>}
+function EmptyState({text,icon,action,actionLabel}){return<div style={{textAlign:"center",padding:"48px 20px",color:"var(--mute)"}}>{icon&&<div style={{fontSize:32,marginBottom:12}}>{icon}</div>}<p style={{fontSize:14,marginBottom:action?16:0}}>{text}</p>{action&&<Btn variant="outline" size="sm" onClick={action}>{actionLabel}</Btn>}</div>}
+function ProgressBar({pct,color="var(--accent)",h=4}){return<div style={{width:"100%",height:h,borderRadius:h,background:"var(--line)",overflow:"hidden"}}><div style={{width:Math.min(pct,100)+"%",height:"100%",borderRadius:h,background:color,transition:"width .4s ease"}}/></div>}
+function Stepper({steps,current}){return<div style={{display:"flex",alignItems:"center",gap:0,marginBottom:20}}>{steps.map((s,i)=><div key={i} style={{display:"flex",alignItems:"center",flex:i<steps.length-1?1:"none"}}><div style={{display:"flex",alignItems:"center",gap:6}}><div style={{width:22,height:22,borderRadius:99,background:i<current?"var(--green)":i===current?"var(--accent)":"var(--line)",color:i<=current?"#fff":"var(--mute)",display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,fontWeight:700,flexShrink:0}}>{i<current?"\u2713":i+1}</div><span className="dsk" style={{fontSize:11,fontWeight:i===current?600:400,color:i<=current?"var(--ink)":"var(--mute)",whiteSpace:"nowrap"}}>{s}</span></div>{i<steps.length-1&&<div style={{flex:1,height:1,background:i<current?"var(--green)":"var(--line)",margin:"0 6px",minWidth:12}}/>}</div>)}</div>}
+function TabBar({tabs,active,onChange}){return<div style={{display:"flex",gap:0,borderBottom:"1px solid var(--line)",marginBottom:16,overflowX:"auto"}}>{tabs.map(t=><button key={t.id} onClick={()=>onChange(t.id)} style={{padding:"10px 14px",fontSize:13,fontWeight:active===t.id?600:400,color:active===t.id?"var(--ink)":"var(--mute)",borderBottom:active===t.id?"2px solid var(--accent)":"2px solid transparent",whiteSpace:"nowrap"}}>{t.label}{t.count!=null&&<span style={{fontSize:11,marginLeft:4,opacity:.6}}>({t.count})</span>}</button>)}</div>}
 
-function EmptyState({text}){return<div style={{textAlign:"center",padding:"48px 20px",color:"var(--mute)"}}><p style={{fontSize:14}}>{text}</p></div>}
+/* ================================================================ NAV ================================================================ */
+function Nav({go,route,user,vendorData}){const[open,setOpen]=useState(false);return<><nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(250,250,248,.95)",backdropFilter:"blur(12px)",borderBottom:"1px solid var(--line)"}}><W style={{display:"flex",alignItems:"center",justifyContent:"space-between",height:54,padding:"0 20px"}}><div onClick={()=>{go("/");setOpen(false)}} style={{cursor:"pointer",display:"flex",alignItems:"baseline",gap:5}}><span style={{fontFamily:"var(--serif)",fontSize:16,fontWeight:400,fontStyle:"italic"}}>find a</span><span style={{fontFamily:"var(--serif)",fontSize:16,fontWeight:500,color:"var(--accent)"}}>food truck</span></div><div style={{display:"flex",alignItems:"center",gap:28}} className="dsk">{[["Submit Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"]].map(([l,p])=><span key={p} onClick={()=>go(p)} style={{fontSize:13,fontWeight:500,color:route===p?"var(--ink)":"var(--mute)",cursor:"pointer"}}>{l}</span>)}</div><div style={{display:"flex",gap:8}} className="dsk">{user?<><Btn variant="ghost" size="sm" onClick={()=>go("/dashboard")}>{vendorData?.truck||"Dashboard"}</Btn><Btn variant="outline" size="sm" onClick={async()=>{await signOut(auth);go("/")}}>Logout</Btn></>:<><Btn variant="ghost" size="sm" onClick={()=>go("/login")}>Vendor Login</Btn><Btn variant="accent" size="sm" onClick={()=>go("/submit")}>Submit Event</Btn></>}</div><button className="mobtn" onClick={()=>setOpen(!open)} style={{fontSize:20,padding:4}}>{open?"\u2715":"\u2630"}</button></W></nav>{open&&<div style={{position:"fixed",inset:0,top:54,background:"var(--bg)",zIndex:99,padding:"16px 20px"}}>{[["Submit an Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"],...(user?[["My Dashboard","/dashboard"],["Logout","/logout"]]:[["Vendor Login","/login"]])].map(([l,p])=><button key={p} onClick={async()=>{setOpen(false);if(p==="/logout"){await signOut(auth);go("/")}else go(p)}} style={{display:"block",width:"100%",padding:"16px 0",fontSize:16,fontWeight:500,color:route===p?"var(--accent)":"var(--ink)",textAlign:"left",borderBottom:"1px solid var(--line)"}}>{l}</button>)}</div>}</>}
 
-function Nav({go,route,user,vendorData}){
-  const[open,setOpen]=useState(false);
-  return<><nav style={{position:"fixed",top:0,left:0,right:0,zIndex:100,background:"rgba(250,250,248,.95)",backdropFilter:"blur(12px)",borderBottom:"1px solid var(--line)"}}>
-    <W style={{display:"flex",alignItems:"center",justifyContent:"space-between",height:54,padding:"0 20px"}}>
-      <div onClick={()=>{go("/");setOpen(false)}} style={{cursor:"pointer",display:"flex",alignItems:"baseline",gap:5}}>
-        <span style={{fontFamily:"var(--serif)",fontSize:16,fontWeight:400,fontStyle:"italic"}}>find a</span>
-        <span style={{fontFamily:"var(--serif)",fontSize:16,fontWeight:500,color:"var(--accent)"}}>food truck</span>
-      </div>
-      <div style={{display:"flex",alignItems:"center",gap:28}} className="dsk">
-        {[["Submit Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"]].map(([l,p])=>
-          <span key={p} onClick={()=>go(p)} style={{fontSize:13,fontWeight:500,color:route===p?"var(--ink)":"var(--mute)",cursor:"pointer",transition:"color .15s"}}>{l}</span>
-        )}
-      </div>
-      <div style={{display:"flex",gap:8}} className="dsk">
-        {user?<><Btn variant="ghost" size="sm" onClick={()=>go("/dashboard")}>{vendorData?.truck||"Dashboard"}</Btn><Btn variant="outline" size="sm" onClick={async()=>{await signOut(auth);go("/")}}>Logout</Btn></>
-        :<><Btn variant="ghost" size="sm" onClick={()=>go("/login")}>Vendor Login</Btn><Btn variant="accent" size="sm" onClick={()=>go("/submit")}>Submit Event</Btn></>}
-      </div>
-      <button className="mobtn" onClick={()=>setOpen(!open)} style={{fontSize:20,padding:4}}>{open?"\u2715":"\u2630"}</button>
-    </W>
-  </nav>
-  {open&&<div style={{position:"fixed",inset:0,top:54,background:"var(--bg)",zIndex:99,padding:"16px 20px"}}>
-    {[["Submit an Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"],
-      ...(user?[["My Dashboard","/dashboard"],["Logout","/logout"]]:[["Vendor Login","/login"]])
-    ].map(([l,p])=>
-      <button key={p} onClick={async()=>{setOpen(false);if(p==="/logout"){await signOut(auth);go("/")}else go(p)}} style={{display:"block",width:"100%",padding:"16px 0",fontSize:16,fontWeight:500,color:route===p?"var(--accent)":"var(--ink)",textAlign:"left",borderBottom:"1px solid var(--line)"}}>{l}</button>
-    )}
-  </div>}</>
+/* ================================================================ HOMEPAGE ================================================================ */
+function HomePage({go}){return<div style={{paddingTop:54}}>
+  <section style={{padding:"clamp(60px,14vw,120px) 20px clamp(48px,10vw,70px)",textAlign:"center"}}><W style={{maxWidth:640,padding:0}}><p className="ani" style={{fontSize:12,fontWeight:500,color:"var(--accent)",letterSpacing:".08em",marginBottom:16}}>RICHMOND, VIRGINIA</p><h1 className="ani d1" style={{fontSize:"clamp(28px,6vw,50px)",fontWeight:300,fontFamily:"var(--serif)",lineHeight:1.2,letterSpacing:"-.02em",margin:"0 0 20px"}}>The food truck booking network for <em style={{fontWeight:400,color:"var(--accent)"}}>Richmond</em>.</h1><p className="ani d2" style={{fontSize:"clamp(14px,2.5vw,16px)",color:"var(--sub)",lineHeight:1.7,maxWidth:420,margin:"0 auto 32px",fontWeight:300}}>Submit event requests. Vendors compete with quotes. Pick your favorite. Book directly.</p><div className="ani d3" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:340,margin:"0 auto"}}><Btn variant="accent" size="lg" full onClick={()=>go("/submit")}>Submit an Event</Btn><Btn variant="outline" size="lg" full onClick={()=>go("/join")}>Join as a Vendor</Btn></div></W></section>
+  <div style={{borderTop:"1px solid var(--line)",borderBottom:"1px solid var(--line)",padding:"10px 0",overflow:"hidden"}}><div style={{display:"flex",animation:"scroll 35s linear infinite",whiteSpace:"nowrap"}}>{[0,1,2].map(j=><div key={j} style={{display:"flex"}}>{["BBQ & Smoked Meats","Mexican / Latin","Southern / Soul Food","Asian Fusion","Breakfast & Brunch","Beverages & Dessert","Weddings","Corporate Events","Festivals"].map((t,i)=><span key={i} style={{padding:"0 24px",fontSize:11,color:"var(--mute)",fontFamily:"var(--mono)"}}>{t}</span>)}</div>)}</div></div>
+  <section style={{padding:"clamp(56px,10vw,96px) 20px"}}><W style={{padding:0}}><p className="ani" style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:10}}>HOW IT WORKS</p><h2 className="ani d1" style={{fontSize:"clamp(24px,4vw,32px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:"clamp(32px,5vw,52px)"}}>Simple for hosts. Valuable for vendors.</h2><div className="ani d2" style={{display:"flex",flexDirection:"column",gap:1,background:"var(--line)",borderRadius:12,overflow:"hidden"}}>{[["01 \u2014 Submit","Tell us your date, location, headcount, and budget. Takes 2 minutes."],["02 \u2014 Get Quotes","Verified vendors compete for your business with prices and availability."],["03 \u2014 Pick & Book","Choose your favorite. Contact info shared. Book directly \u2014 no fees."]].map(([t,d])=><div key={t} style={{background:"var(--card)",padding:"clamp(24px,3.5vw,36px)"}}><h3 style={{fontSize:14,fontWeight:600,marginBottom:6,color:"var(--accent)"}}>{t}</h3><p style={{fontSize:13,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>{d}</p></div>)}</div></W></section>
+  <section style={{padding:"clamp(60px,10vw,100px) 20px",background:"var(--ink)",position:"relative",overflow:"hidden"}}><div style={{position:"absolute",top:"-20%",right:"-10%",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(212,72,44,.07),transparent 60%)",filter:"blur(40px)"}}/><W style={{maxWidth:560,textAlign:"center",position:"relative",padding:0}}><p className="ani" style={{fontSize:11,fontWeight:500,color:"rgba(255,255,255,.3)",letterSpacing:".08em",marginBottom:12}}>VERIFIED VENDOR ACCESS</p><h2 className="ani d1" style={{fontSize:"clamp(22px,4vw,28px)",fontWeight:300,fontFamily:"var(--serif)",color:"#fff",margin:"0 0 14px"}}>Priority placement. Category protection. Direct leads.</h2><p className="ani d2" style={{fontSize:14,color:"rgba(255,255,255,.5)",lineHeight:1.7,marginBottom:28,fontWeight:300}}>Limited to 1-2 vendors per cuisine. When your slot is full, your competition is capped.</p><div className="ani d3"><Btn variant="accent" size="lg" onClick={()=>go("/access")}>Join the Waitlist</Btn></div></W></section>
+  <section style={{padding:"clamp(56px,10vw,88px) 20px",textAlign:"center",borderTop:"1px solid var(--line)"}}><W style={{maxWidth:460,padding:0}}><h2 className="ani" style={{fontSize:"clamp(22px,4vw,26px)",fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 24px"}}>Richmond's food truck scene deserves better infrastructure.</h2><div className="ani d2" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:320,margin:"0 auto"}}><Btn variant="accent" full onClick={()=>go("/submit")}>Submit an Event</Btn><Btn variant="outline" full onClick={()=>go("/join")}>Join as a Vendor</Btn></div></W></section>
+  <section style={{padding:"clamp(48px,8vw,64px) 20px",borderTop:"1px solid var(--line)"}}><W style={{display:"flex",justifyContent:"center",gap:"clamp(28px,6vw,64px)",padding:0,flexWrap:"wrap"}}>{[["4,100+","Network members"],["$800-2,500","Avg. booking"],["10","Verified vendor slots"]].map(([v,l])=><div key={l} style={{textAlign:"center"}}><div style={{fontSize:"clamp(22px,4vw,30px)",fontWeight:300,fontFamily:"var(--serif)"}}>{v}</div><div style={{fontSize:10,color:"var(--mute)",marginTop:4,fontFamily:"var(--mono)"}}>{l}</div></div>)}</W></section>
+</div>}
+function FormPage({go,title,subtitle,children}){return<div style={{paddingTop:54}}><section style={{padding:"clamp(32px,5vw,56px) 20px clamp(48px,8vw,80px)"}}><W style={{maxWidth:540,padding:0}}><div className="ani" style={{marginBottom:24}}><span onClick={()=>go("/")} style={{fontSize:13,color:"var(--mute)",cursor:"pointer",display:"inline-block",marginBottom:10}}>{"\u2190"} Back</span><h1 style={{fontSize:"clamp(22px,4vw,28px)",fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 4px"}}>{title}</h1>{subtitle&&<p style={{fontSize:13,color:"var(--sub)"}}>{subtitle}</p>}</div>{children}</W></section></div>}
+
+/* ================================================================ SUBMIT EVENT ================================================================ */
+function SubmitEvent({go}){
+  const[step,setStep]=useState(1);const[loading,setLoading]=useState(false);const[trackToken,setTrackToken]=useState(null);const[errors,setErrors]=useState({});
+  const[f,sF]=useState({type:"",date:"",time:"",location:"",attendance:"",trucks:"1",cuisine:"",budget:"",name:"",email:"",phone:"",org:"",notes:"",_hp:""});
+  const u=(k,v)=>sF(p=>({...p,[k]:v}));
+  useEffect(()=>{window._formOpened=Date.now()},[]);
+  const validate=(s)=>{const e={};if(s===1){if(!f.type)e.type="Select event type";if(!f.date)e.date="Pick a date";if(!f.location)e.location="Enter location";if(!f.attendance)e.attendance="Headcount needed";}if(s===2){if(!f.cuisine)e.cuisine="Select cuisine";}if(s===3){if(!f.name)e.name="Name required";if(!f.email||!_validEmail(f.email))e.email="Valid email required";}setErrors(e);return!Object.keys(e).length};
+  const next=s=>{if(validate(step))setStep(s)};
+  const submit=async()=>{if(!validate(3))return;if(!_honeypotClean(f._hp))return;if(!_timingOk()){alert("Please review your submission.");return}if(!_canSubmit("event")){alert("Limit reached.");return}setLoading(true);try{const token=_genToken();await addDoc(collection(db,"events"),{eventType:_san(f.type),date:_san(f.date),time:_san(f.time),location:_san(f.location),attendance:_san(f.attendance),trucks:_san(f.trucks),cuisine:_san(f.cuisine),budget:_san(f.budget),notes:_san(f.notes),name:_san(f.name),email:_san(f.email),phone:_san(f.phone),org:_san(f.org),status:"new",trackToken:token,responseCount:0,createdAt:serverTimestamp()});submitToSheet({type:"event",eventType:_san(f.type),date:_san(f.date),location:_san(f.location),name:_san(f.name),email:_san(f.email),trackToken:token});setTrackToken(token);setStep(4)}catch{alert("Something went wrong.")}setLoading(false)};
+  const trackUrl=trackToken?window.location.origin+window.location.pathname+"#/track/"+trackToken:"";
+  if(step===4)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:440}}><div style={{width:52,height:52,borderRadius:99,background:"var(--green)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:22,margin:"0 auto 20px"}}>{"\u2713"}</div><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Request submitted!</h2><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300,marginBottom:20}}>Vendors will start sending quotes. Track your event below.</p><div style={{background:"var(--tint)",border:"1px solid var(--line)",borderRadius:10,padding:16,marginBottom:20,textAlign:"left"}}><label style={{fontSize:10,fontWeight:600,color:"var(--mute)",letterSpacing:".04em",display:"block",marginBottom:5}}>YOUR TRACKING LINK</label><div style={{display:"flex",gap:6}}><input readOnly value={trackUrl} style={{flex:1,padding:"10px 12px",borderRadius:8,border:"1px solid var(--line)",fontSize:11,fontFamily:"var(--mono)",color:"var(--ink)",background:"var(--card)"}} onClick={e=>e.target.select()}/><Btn variant="accent" size="sm" onClick={()=>navigator.clipboard?.writeText(trackUrl)}>Copy</Btn></div><p style={{fontSize:11,color:"var(--mute)",marginTop:6}}>Bookmark this! No login needed.</p></div><div style={{display:"flex",gap:10,justifyContent:"center"}}><Btn variant="accent" onClick={()=>go("/track/"+trackToken)}>View My Event</Btn><Btn variant="outline" onClick={()=>go("/")}>Home</Btn></div></div></div>;
+  return<FormPage go={go} title="Submit an Event" subtitle={"Step "+step+" of 3"}><Stepper steps={["Details","Requirements","Contact"]} current={step-1}/><div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}><HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/>
+    {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Event Details</h3><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:errors.type?"#DC2626":"var(--sub)",marginBottom:6}}>Event Type <span style={{color:"var(--accent)"}}>*</span></label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{ETYPES.map(t=><Chip key={t} active={f.type===t} onClick={()=>{u("type",t);setErrors(p=>({...p,type:undefined}))}}>{t}</Chip>)}</div>{errors.type&&<p style={{fontSize:11,color:"#DC2626",marginTop:4}}>{errors.type}</p>}</div><Input label="Date" value={f.date} onChange={e=>u("date",e.target.value)} type="date" required error={errors.date}/><Input label="Time" value={f.time} onChange={e=>u("time",e.target.value)} placeholder="e.g. 4-8 PM"/><Input label="Location" value={f.location} onChange={e=>u("location",e.target.value)} placeholder="Venue or address" required error={errors.location}/><div style={{display:"flex",gap:10}}><div style={{flex:1}}><Input label="Guests" value={f.attendance} onChange={e=>u("attendance",e.target.value)} placeholder="Expected" type="number" required error={errors.attendance}/></div><div style={{flex:1}}><Input label="Trucks needed" value={f.trucks} onChange={e=>u("trucks",e.target.value)} placeholder="1" type="number" hint="Most events need 1-2"/></div></div><div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}><Btn variant="accent" onClick={()=>next(2)}>Continue</Btn></div></>}
+    {step===2&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Requirements</h3><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:errors.cuisine?"#DC2626":"var(--sub)",marginBottom:6}}>Cuisine Preference <span style={{color:"var(--accent)"}}>*</span></label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{[...CUISINES,"Any / Open"].map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>{u("cuisine",c);setErrors(p=>({...p,cuisine:undefined}))}}>{c}</Chip>)}</div>{errors.cuisine&&<p style={{fontSize:11,color:"#DC2626",marginTop:4}}>{errors.cuisine}</p>}</div><Input label="Budget" value={f.budget} onChange={e=>u("budget",e.target.value)} placeholder="e.g. $1,000-2,000" hint="Helps vendors quote accurately"/><Input label="Additional Details" value={f.notes} onChange={e=>u("notes",e.target.value)} placeholder="Dietary needs, setup, power access..." textarea rows={4}/><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(1)}>Back</Btn><Btn variant="accent" onClick={()=>next(3)}>Continue</Btn></div></>}
+    {step===3&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Your Contact Info</h3><Input label="Name" value={f.name} onChange={e=>u("name",e.target.value)} placeholder="Full name" required error={errors.name}/><Input label="Organization" value={f.org} onChange={e=>u("org",e.target.value)} placeholder="Optional"/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email" required error={errors.email}/><Input label="Phone" value={f.phone} onChange={e=>u("phone",_fmtPhone(e.target.value))} placeholder="(804) 555-0000" type="tel" hint="Optional \u2014 helps vendors reach you"/><div style={{background:"var(--tint)",borderRadius:8,padding:12,marginBottom:14,fontSize:12,color:"var(--sub)",lineHeight:1.6}}>Your contact info stays hidden until you pick a vendor.</div><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={submit} disabled={loading}>{loading?"Submitting...":"Submit Request"}</Btn></div></>}
+  </div></FormPage>
 }
 
-function HomePage({go}){
-  return<div style={{paddingTop:54}}>
-    <section style={{padding:"clamp(60px,14vw,120px) 20px clamp(48px,10vw,70px)",textAlign:"center"}}>
-      <W style={{maxWidth:640,padding:0}}>
-        <p className="ani" style={{fontSize:12,fontWeight:500,color:"var(--accent)",letterSpacing:".08em",marginBottom:16}}>RICHMOND, VIRGINIA</p>
-        <h1 className="ani d1" style={{fontSize:"clamp(28px,6vw,50px)",fontWeight:300,fontFamily:"var(--serif)",lineHeight:1.2,letterSpacing:"-.02em",margin:"0 0 20px"}}>The food truck booking network for <em style={{fontWeight:400,color:"var(--accent)"}}>Richmond</em>.</h1>
-        <p className="ani d2" style={{fontSize:"clamp(14px,2.5vw,16px)",color:"var(--sub)",lineHeight:1.7,maxWidth:420,margin:"0 auto 32px",fontWeight:300}}>Submit event requests. Get matched with verified vendors. Book directly. No middlemen, no spam.</p>
-        <div className="ani d3" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:340,margin:"0 auto"}}>
-          <Btn variant="accent" size="lg" full onClick={()=>go("/submit")}>Submit an Event</Btn>
-          <Btn variant="outline" size="lg" full onClick={()=>go("/join")}>Join as a Vendor</Btn>
-        </div>
-        <p className="ani d3" style={{fontSize:12,color:"var(--mute)",marginTop:18,fontStyle:"italic",fontFamily:"var(--serif)"}}>Serving corporate events, weddings, festivals, and everything in between.</p>
-      </W>
-    </section>
-    <div style={{borderTop:"1px solid var(--line)",borderBottom:"1px solid var(--line)",padding:"10px 0",overflow:"hidden"}}>
-      <div style={{display:"flex",animation:"scroll 35s linear infinite",whiteSpace:"nowrap"}}>
-        {[0,1,2].map(j=><div key={j} style={{display:"flex"}}>{["BBQ & Smoked Meats","Mexican / Latin","Southern / Soul Food","Asian Fusion","Breakfast & Brunch","Beverages & Dessert","Catering","Weddings","Corporate Events","Festivals"].map((t,i)=><span key={i} style={{padding:"0 24px",fontSize:11,color:"var(--mute)",fontFamily:"var(--mono)"}}>{t}</span>)}</div>)}
-      </div>
-    </div>
-    <section style={{padding:"clamp(56px,10vw,96px) 20px"}}><W style={{padding:0}}>
-      <p className="ani" style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:10}}>HOW IT WORKS</p>
-      <h2 className="ani d1" style={{fontSize:"clamp(24px,4vw,32px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:"clamp(32px,5vw,52px)"}}>Simple for hosts.<br/>Valuable for vendors.</h2>
-      <div className="ani d2" style={{display:"flex",flexDirection:"column",gap:1,background:"var(--line)",borderRadius:12,overflow:"hidden"}}>
-        {[["For Event Hosts","Tell us your date, location, headcount, and requirements. We match you with verified vendors.","Submit an Event \u2192","/submit"],
-          ["For Vendors","Get listed for free. Receive booking opportunities from hosts across Richmond.","Join the Network \u2192","/join"],
-          ["Direct Booking","No platform fees. No middlemen. Hosts and vendors connect directly.","Learn More \u2192","/access"]
-        ].map(([t,d,c,l])=><div key={t} style={{background:"var(--card)",padding:"clamp(24px,3.5vw,36px)"}}><h3 style={{fontSize:14,fontWeight:600,marginBottom:8}}>{t}</h3><p style={{fontSize:13,color:"var(--sub)",lineHeight:1.7,marginBottom:14,fontWeight:300}}>{d}</p><span onClick={()=>go(l)} style={{fontSize:13,fontWeight:500,color:"var(--accent)",cursor:"pointer"}}>{c}</span></div>)}
-      </div>
-    </W></section>
-    <section style={{padding:"clamp(48px,8vw,68px) 20px",borderTop:"1px solid var(--line)",background:"var(--tint)"}}><W style={{padding:0}}>
-      <p style={{fontSize:12,fontWeight:500,color:"var(--mute)",letterSpacing:".08em",marginBottom:10}}>CURRENT STATUS</p>
-      <h2 style={{fontSize:"clamp(22px,3.5vw,26px)",fontWeight:300,fontFamily:"var(--serif)",marginBottom:24}}>Now accepting</h2>
-      <div style={{display:"flex",gap:"clamp(16px,3vw,36px) clamp(24px,5vw,44px)",flexWrap:"wrap"}}>
-        {[["Event submissions","Active"],["Vendor applications","Active"],["Verified Vendor waitlist","Open"]].map(([l,s])=>
-          <div key={l} style={{display:"flex",alignItems:"center",gap:8}}><div style={{width:6,height:6,borderRadius:99,background:s==="Active"?"var(--green)":"var(--accent)",flexShrink:0}}/><div><span style={{fontSize:11,fontWeight:500,color:s==="Active"?"var(--green)":"var(--accent)",fontFamily:"var(--mono)"}}>{s}</span><span style={{fontSize:12,color:"var(--sub)",marginLeft:6}}>{l}</span></div></div>
-        )}
-      </div>
-    </W></section>
-    <section style={{padding:"clamp(60px,10vw,100px) 20px",background:"var(--ink)",position:"relative",overflow:"hidden"}}>
-      <div style={{position:"absolute",top:"-20%",right:"-10%",width:300,height:300,borderRadius:"50%",background:"radial-gradient(circle,rgba(212,72,44,.07),transparent 60%)",filter:"blur(40px)"}}/>
-      <W style={{maxWidth:560,textAlign:"center",position:"relative",padding:0}}>
-        <p className="ani" style={{fontSize:11,fontWeight:500,color:"rgba(255,255,255,.3)",letterSpacing:".08em",marginBottom:12}}>VERIFIED VENDOR ACCESS</p>
-        <h2 className="ani d1" style={{fontSize:"clamp(22px,4vw,28px)",fontWeight:300,fontFamily:"var(--serif)",color:"#fff",margin:"0 0 14px"}}>Priority placement. Direct lead access. Category protection.</h2>
-        <p className="ani d2" style={{fontSize:14,color:"rgba(255,255,255,.5)",lineHeight:1.7,marginBottom:12,fontWeight:300}}>First access to booking requests, protected category placement, and featured visibility across the network.</p>
-        <p className="ani d2" style={{fontSize:13,color:"rgba(255,255,255,.35)",lineHeight:1.7,marginBottom:28,fontStyle:"italic",fontFamily:"var(--serif)"}}>Limited to 1-2 vendors per cuisine. When your slot is full, your competition is capped.</p>
-        <div className="ani d3" style={{marginTop:4}}><Btn variant="accent" size="lg" onClick={()=>go("/access")}>Join the Waitlist</Btn></div>
-      </W>
-    </section>
-    <section style={{padding:"clamp(56px,10vw,88px) 20px",textAlign:"center",borderTop:"1px solid var(--line)"}}><W style={{maxWidth:460,padding:0}}>
-      <h2 className="ani" style={{fontSize:"clamp(22px,4vw,26px)",fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 12px"}}>Richmond's food truck scene deserves better infrastructure.</h2>
-      <p className="ani d1" style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300,marginBottom:24}}>We're building it. Get in early.</p>
-      <div className="ani d2" style={{display:"flex",flexDirection:"column",gap:10,maxWidth:320,margin:"0 auto"}}><Btn variant="accent" full onClick={()=>go("/submit")}>Submit an Event</Btn><Btn variant="outline" full onClick={()=>go("/join")}>Join as a Vendor</Btn></div>
-    </W></section>
-    <section style={{padding:"clamp(48px,8vw,64px) 20px",borderTop:"1px solid var(--line)"}}><W style={{display:"flex",justifyContent:"center",gap:"clamp(28px,6vw,64px)",padding:0,flexWrap:"wrap"}}>
-      {[["4,100+","Network members"],["$800-2,500","Avg. booking"],["10","Verified vendor slots"]].map(([v,l])=>
-        <div key={l} style={{textAlign:"center"}}><div style={{fontSize:"clamp(22px,4vw,30px)",fontWeight:300,fontFamily:"var(--serif)",letterSpacing:"-.02em"}}>{v}</div><div style={{fontSize:10,color:"var(--mute)",marginTop:4,fontFamily:"var(--mono)"}}>{l}</div></div>
-      )}
-    </W></section>
-  </div>
-}
-
-function FormPage({go,title,subtitle,children}){
-  return<div style={{paddingTop:54}}><section style={{padding:"clamp(32px,5vw,56px) 20px clamp(48px,8vw,80px)"}}><W style={{maxWidth:540,padding:0}}>
-    <div className="ani" style={{marginBottom:24}}>
-      <span onClick={()=>go("/")} style={{fontSize:13,color:"var(--mute)",cursor:"pointer",display:"inline-block",marginBottom:10}}>{"\u2190"} Back</span>
-      <h1 style={{fontSize:"clamp(22px,4vw,28px)",fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 4px"}}>{title}</h1>
-      {subtitle&&<p style={{fontSize:13,color:"var(--sub)"}}>{subtitle}</p>}
-    </div>{children}
+/* ================================================================ HOST TRACKING PAGE ================================================================ */
+function EventTracker({go,token}){
+  const[event,setEvent]=useState(null);const[responses,setResponses]=useState([]);const[loading,setLoading]=useState(true);const[eventId,setEventId]=useState(null);
+  const{show,Toast}=useToast();
+  useEffect(()=>{if(!token)return;const q2=query(collection(db,"events"),where("trackToken","==",token),limit(1));const unsub=onSnapshot(q2,snap=>{if(!snap.empty){const d=snap.docs[0];setEvent({id:d.id,...d.data()});setEventId(d.id)}setLoading(false)});return unsub},[token]);
+  useEffect(()=>{if(!eventId)return;const q2=query(collection(db,"responses"),where("eventId","==",eventId),orderBy("createdAt","desc"));const unsub=onSnapshot(q2,snap=>{setResponses(snap.docs.map(d=>({id:d.id,...d.data()})))});return unsub},[eventId]);
+  const pickVendor=async(r)=>{if(!window.confirm("Select "+r.truckName+"? Their contact info will be shared with you."))return;try{await updateDoc(doc(db,"responses",r.id),{status:"accepted"});for(const o of responses)if(o.id!==r.id&&o.status==="sent")await updateDoc(doc(db,"responses",o.id),{status:"declined"});await updateDoc(doc(db,"events",eventId),{status:"booked",bookedVendorId:r.vendorId,bookedAt:serverTimestamp()});show("Vendor selected!")}catch{alert("Something went wrong.")}};
+  if(loading)return<div style={{paddingTop:54}}><Loader/></div>;
+  if(!event)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:380}}><h2 style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Event not found</h2><p style={{fontSize:14,color:"var(--sub)"}}>This link may be invalid.</p><Btn variant="outline" onClick={()=>go("/")} style={{marginTop:20}}>Home</Btn></div></div>;
+  const isBooked=event.status==="booked";const accepted=responses.find(r=>r.status==="accepted");
+  return<div style={{paddingTop:54}}><Toast/><section style={{padding:"clamp(32px,5vw,56px) 20px clamp(48px,8vw,80px)"}}><W style={{maxWidth:640,padding:0}}>
+    <div className="ani" style={{marginBottom:20}}><span onClick={()=>go("/")} style={{fontSize:13,color:"var(--mute)",cursor:"pointer",marginBottom:10,display:"inline-block"}}>{"\u2190"} Home</span><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><h1 style={{fontSize:"clamp(22px,4vw,28px)",fontWeight:300,fontFamily:"var(--serif)"}}>Your Event</h1><StatusBadge status={event.status}/></div><p style={{fontSize:13,color:"var(--sub)"}}>{event.eventType} {event.date&&"\u00b7 "+event.date} {event.location&&"\u00b7 "+event.location}</p>{event.createdAt&&<p style={{fontSize:11,color:"var(--mute)",marginTop:4}}>Submitted {_timeAgo(event.createdAt)}</p>}</div>
+    <Stepper steps={["Submitted","Getting quotes","Pick vendor","Booked!"]} current={isBooked?4:responses.length>0?2:1}/>
+    {/* Event details */}
+    <div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(18px,3vw,28px)",marginBottom:20}}><h3 style={{fontSize:13,fontWeight:600,color:"var(--mute)",letterSpacing:".04em",marginBottom:14}}>EVENT DETAILS</h3><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"10px 24px",fontSize:13}}>{[["Type",event.eventType],["Date",event.date],["Time",event.time],["Location",event.location],["Guests",event.attendance],["Cuisine",event.cuisine],["Budget",event.budget],["Trucks",event.trucks]].filter(([,v])=>v).map(([k,v])=><div key={k}><span style={{color:"var(--mute)",fontSize:11}}>{k}</span><div style={{fontWeight:500,marginTop:2}}>{v}</div></div>)}</div>{event.notes&&<div style={{marginTop:12,paddingTop:12,borderTop:"1px solid var(--line)",fontSize:13,color:"var(--sub)",lineHeight:1.6}}>{event.notes}</div>}</div>
+    {/* Booked vendor */}
+    {isBooked&&accepted&&<div className="ani d1" style={{background:"var(--greenL)",borderRadius:10,border:"1px solid var(--green)",padding:"clamp(18px,3vw,28px)",marginBottom:20}}><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}><Badge text="BOOKED" color="green"/><span style={{fontSize:15,fontWeight:600}}>{accepted.truckName}</span></div><p style={{fontSize:13,color:"var(--sub)",marginBottom:12}}>Contact info for direct coordination:</p><div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"8px 20px",fontSize:13}}>{accepted.vendorEmail&&<div><span style={{color:"var(--mute)",fontSize:11}}>Email</span><div style={{fontWeight:500,marginTop:2}}>{accepted.vendorEmail}</div></div>}{accepted.vendorPhone&&<div><span style={{color:"var(--mute)",fontSize:11}}>Phone</span><div style={{fontWeight:500,marginTop:2}}>{accepted.vendorPhone}</div></div>}</div>{accepted.quote&&<div style={{marginTop:12,fontSize:18,fontWeight:600,color:"var(--green)",fontFamily:"var(--mono)"}}>{accepted.quote}</div>}</div>}
+    {/* Responses */}
+    <div className="ani d2"><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}><h3 style={{fontSize:15,fontWeight:500}}>Vendor Responses ({responses.length})</h3>{responses.length>0&&!isBooked&&<span style={{fontSize:11,color:"var(--mute)"}}>Pick a vendor to book</span>}</div>
+    {responses.length===0&&!isBooked&&<div style={{background:"var(--tint)",borderRadius:10,padding:"32px 20px",textAlign:"center"}}><div style={{fontSize:28,marginBottom:10}}>{"\ud83d\ude9a"}</div><p style={{fontSize:14,fontWeight:500,marginBottom:4}}>Waiting for vendor responses</p><p style={{fontSize:13,color:"var(--mute)",lineHeight:1.6}}>Verified vendors get notified first. Most events get quotes within 24 hours.</p></div>}
+    {responses.filter(r=>r.status!=="declined").map(r=><div key={r.id} style={{background:"var(--card)",borderRadius:10,border:r.status==="accepted"?"1px solid var(--green)":"1px solid var(--line)",padding:"clamp(16px,2.5vw,24px)",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10,marginBottom:8}}><div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}><span style={{fontSize:16}}>{_cuisineEmoji(r.vendorCuisine)}</span><span style={{fontSize:15,fontWeight:600}}>{r.truckName}</span>{r.vendorTier==="verified"&&<Badge text="VERIFIED" color="accent"/>}<StatusBadge status={r.status}/></div><span style={{fontSize:12,color:"var(--mute)"}}>{r.vendorCuisine}</span>{r.createdAt&&<span style={{fontSize:11,color:"var(--mute)",marginLeft:8}}>{_timeAgo(r.createdAt)}</span>}</div>{r.quote&&<div style={{fontSize:20,fontWeight:600,fontFamily:"var(--mono)",color:"var(--green)"}}>{r.quote}</div>}</div>{r.vendorDescription&&<p style={{fontSize:12,color:"var(--sub)",lineHeight:1.5,marginBottom:6}}>{r.vendorDescription}</p>}{r.message&&<p style={{fontSize:13,color:"var(--sub)",lineHeight:1.6,marginBottom:8,fontStyle:"italic",background:"var(--tint)",padding:"8px 12px",borderRadius:6}}>"{r.message}"</p>}{r.availability&&<p style={{fontSize:12,color:"var(--mute)",marginBottom:10}}>Availability: {r.availability}</p>}{!isBooked&&r.status==="sent"&&<Btn variant="success" size="sm" onClick={()=>pickVendor(r)}>Select This Vendor</Btn>}</div>)}</div>
   </W></section></div>
 }
 
-function SubmitEvent({go}){
-  const[step,setStep]=useState(1);const[loading,setLoading]=useState(false);
-  const[f,sF]=useState({type:"",date:"",time:"",location:"",attendance:"",cuisine:"",budget:"",name:"",email:"",phone:"",org:"",notes:"",_hp:""});
-  const u=(k,v)=>sF({...f,[k]:v});
-  const types=["Corporate","Wedding","Private Party","Festival","Community","School / Nonprofit","Other"];
-
-  /* SECURITY: Set form open timestamp on mount */
-  useEffect(()=>{window._formOpened=Date.now()},[]);
-
-  const submit=async()=>{
-    /* SECURITY: Honeypot check */
-    if(!_honeypotClean(f._hp))return;
-    /* SECURITY: Timing check - 3sec minimum */
-    if(!_timingOk()){alert("Please take a moment to review your submission.");return}
-    /* SECURITY: Session limit - max 5 event submissions */
-    if(!_canSubmit("event")){alert("Submission limit reached for this session.");return}
-    if(!_validEmail(f.email)){alert("Enter a valid email.");return}
-    setLoading(true);
-    try{
-      await addDoc(collection(db,"events"),{eventType:f.type,date:f.date,time:f.time,location:f.location,attendance:f.attendance,cuisine:f.cuisine,budget:f.budget,notes:f.notes,name:f.name,email:f.email,phone:f.phone,org:f.org,status:"new",createdAt:serverTimestamp()});
-      submitToSheet({type:"event",eventType:_san(f.type),date:_san(f.date),time:_san(f.time),location:_san(f.location),attendance:_san(f.attendance),cuisine:_san(f.cuisine),budget:_san(f.budget),notes:_san(f.notes),name:_san(f.name),email:_san(f.email),phone:_san(f.phone),org:_san(f.org)});
-      setStep(4);
-    }catch(e){alert("Something went wrong.")}
-    setLoading(false);
-  };
-
-  if(step===4)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:380}}><div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"✓"}</div><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Request submitted.</h2><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>Verified vendors get notified first. Expect responses within 24 hours.</p><div style={{marginTop:28}}><Btn variant="outline" onClick={()=>go("/")}>Back to home</Btn></div></div></div>;
-
-  return<FormPage go={go} title="Submit an Event" subtitle={`Step ${step} of 3`}><div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)"}}/>)}</div><div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}>
-    {/* SECURITY: Honeypot field */}
-    <HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/>
-    {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Event Details</h3><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Event Type</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{types.map(t=><Chip key={t} active={f.type===t} onClick={()=>u("type",t)}>{t}</Chip>)}</div></div><Input label="Date" value={f.date} onChange={e=>u("date",e.target.value)} type="date"/><Input label="Time" value={f.time} onChange={e=>u("time",e.target.value)} placeholder="e.g. 4-8 PM"/><Input label="Location" value={f.location} onChange={e=>u("location",e.target.value)} placeholder="Venue or address"/><Input label="Guests" value={f.attendance} onChange={e=>u("attendance",e.target.value)} placeholder="Expected attendance" type="number"/><div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}><Btn variant="accent" onClick={()=>setStep(2)}>Continue</Btn></div></>}
-    {step===2&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Requirements</h3><Input label="Cuisine" value={f.cuisine} onChange={e=>u("cuisine",e.target.value)} placeholder="e.g. BBQ, Mexican, Any"/><Input label="Budget" value={f.budget} onChange={e=>u("budget",e.target.value)} placeholder="e.g. $-,000"/><Input label="Details" value={f.notes} onChange={e=>u("notes",e.target.value)} placeholder="Dietary needs, setup, # of trucks..." textarea rows={4}/><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(1)}>Back</Btn><Btn variant="accent" onClick={()=>setStep(3)}>Continue</Btn></div></>}
-    {step===3&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Contact</h3><Input label="Name" value={f.name} onChange={e=>u("name",e.target.value)} placeholder="Full name"/><Input label="Organization" value={f.org} onChange={e=>u("org",e.target.value)} placeholder="Optional"/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/><Input label="Phone" value={f.phone} onChange={e=>u("phone",e.target.value)} placeholder="(804) 555-0000"/><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={submit} disabled={loading}>{loading?"Submitting...":"Submit Request"}</Btn></div></>}
-  </div></FormPage>}
-
+/* ================================================================ JOIN VENDOR ================================================================ */
 function JoinVendor({go}){
-  const[step,setStep]=useState(1);const[loading,setLoading]=useState(false);const[err,setErr]=useState("");
+  const[step,setStep]=useState(1);const[loading,setLoading]=useState(false);const[err,setErr]=useState("");const[errors,setErrors]=useState({});
   const[f,sF]=useState({truck:"",cuisine:"",owner:"",phone:"",email:"",password:"",schedule:"",description:"",waitlist:false,_hp:""});
-  const u=(k,v)=>sF({...f,[k]:v});const cuisines=["BBQ & Smoked","Mexican / Latin","Southern / Soul","Asian Fusion","Breakfast / Brunch","Beverages / Dessert","Other"];
-
-  /* SECURITY: Set form open timestamp on mount */
+  const u=(k,v)=>sF(p=>({...p,[k]:v}));
   useEffect(()=>{window._formOpened=Date.now()},[]);
+  const validate=s=>{const e={};if(s===1){if(!f.truck)e.truck="Truck name required";if(!f.cuisine)e.cuisine="Select cuisine";}if(s===2){if(!f.owner)e.owner="Name required";if(!f.email||!_validEmail(f.email))e.email="Valid email required";if(!f.password||f.password.length<6)e.password="6+ characters";}setErrors(e);return!Object.keys(e).length};
+  const next=s=>{if(validate(step))setStep(s)};
+  const submit=async()=>{if(!validate(2))return;if(!_honeypotClean(f._hp))return;if(!_timingOk()){alert("Please review.");return}if(!_canSubmit("vendor")){alert("Limit reached.");return}setLoading(true);setErr("");try{const cred=await createUserWithEmailAndPassword(auth,f.email,f.password);await setDoc(doc(db,"vendors",cred.user.uid),{email:f.email,truck:_san(f.truck),cuisine:_san(f.cuisine),schedule:_san(f.schedule),description:_san(f.description),owner:_san(f.owner),phone:_san(f.phone),menu:[],status:"pending",tier:"free",waitlist:f.waitlist,createdAt:serverTimestamp()});submitToSheet({type:"vendor",truck:_san(f.truck),cuisine:_san(f.cuisine),owner:_san(f.owner),email:_san(f.email)});if(f.waitlist){await addDoc(collection(db,"waitlist"),{name:_san(f.owner),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:"Applied during signup",status:"new",createdAt:serverTimestamp()});}setStep(4)}catch(e){if(e.code==="auth/email-already-in-use")setErr("Email already registered.");else setErr(e.message||"Something went wrong.")}setLoading(false)};
+  if(step===4)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:380}}><div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Application submitted!</h2><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>Pending approval. Log in to check status.</p>{f.waitlist&&<p style={{fontSize:12,fontWeight:500,background:"var(--accentL)",color:"var(--accent)",padding:"8px 14px",borderRadius:8,display:"inline-block",marginTop:10}}>Verified waitlist applied</p>}<div style={{marginTop:28,display:"flex",gap:8,justifyContent:"center"}}><Btn variant="accent" onClick={()=>go("/dashboard")}>Dashboard</Btn><Btn variant="outline" onClick={()=>go("/")}>Home</Btn></div></div></div>;
+  return<FormPage go={go} title="Join as a Vendor" subtitle={"Step "+step+" of 3"}><Stepper steps={["Business","Account","Options"]} current={step-1}/>{err&&<div style={{background:"#FFEBEE",color:"#C62828",padding:"10px 14px",borderRadius:8,fontSize:13,marginBottom:16}}>{err}</div>}<div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}><HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/>
+    {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Business Info</h3><Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck name" required error={errors.truck}/><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:errors.cuisine?"#DC2626":"var(--sub)",marginBottom:6}}>Cuisine <span style={{color:"var(--accent)"}}>*</span></label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{CUISINES.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>{u("cuisine",c);setErrors(p=>({...p,cuisine:undefined}))}}>{c}</Chip>)}</div>{errors.cuisine&&<p style={{fontSize:11,color:"#DC2626",marginTop:4}}>{errors.cuisine}</p>}</div><Input label="Schedule" value={f.schedule} onChange={e=>u("schedule",e.target.value)} placeholder="e.g. Tue-Sat 11am-8pm"/><Input label="Description" value={f.description} onChange={e=>u("description",e.target.value)} placeholder="What you serve, your specialty..." textarea rows={3}/><div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}><Btn variant="accent" onClick={()=>next(2)}>Continue</Btn></div></>}
+    {step===2&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Your Account</h3><Input label="Owner Name" value={f.owner} onChange={e=>u("owner",e.target.value)} placeholder="Full name" required error={errors.owner}/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email" required error={errors.email}/><Input label="Create Password" value={f.password} onChange={e=>u("password",e.target.value)} placeholder="At least 6 characters" type="password" required error={errors.password}/><Input label="Phone" value={f.phone} onChange={e=>u("phone",_fmtPhone(e.target.value))} placeholder="(804) 555-0000" type="tel"/><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(1)}>Back</Btn><Btn variant="accent" onClick={()=>next(3)}>Continue</Btn></div></>}
+    {step===3&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Verified Access</h3><div style={{background:"var(--tint)",borderRadius:8,padding:16,marginBottom:18,border:"1px solid var(--line)"}}><h4 style={{fontSize:13,fontWeight:600,marginBottom:4}}>Verified Vendor tier</h4><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300,marginBottom:10}}>Priority placement, direct leads, category protection.</p><label style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer"}}><input type="checkbox" checked={f.waitlist} onChange={e=>u("waitlist",e.target.checked)} style={{marginTop:2,accentColor:"var(--accent)"}}/><span style={{fontSize:13,lineHeight:1.5}}>Add me to the verified waitlist</span></label></div><div style={{display:"flex",justifyContent:"space-between"}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={submit} disabled={loading}>{loading?"Creating...":"Join Network"}</Btn></div></>}
+  </div></FormPage>
+}
 
-  const submit=async()=>{
-    /* SECURITY: Honeypot check */
-    if(!_honeypotClean(f._hp))return;
-    /* SECURITY: Timing check */
-    if(!_timingOk()){alert("Please take a moment to review your submission.");return}
-    /* SECURITY: Session limit */
-    if(!_canSubmit("vendor")){alert("Submission limit reached for this session.");return}
-    if(!_validEmail(f.email)){alert("Enter a valid email.");return}
-    if(!f.password||f.password.length<6){alert("Password needs 6+ characters.");return}
-    setLoading(true);setErr("");
-    try{
-      const cred=await createUserWithEmailAndPassword(auth,f.email,f.password);
-      await setDoc(doc(db,"vendors",cred.user.uid),{email:f.email,truck:_san(f.truck),cuisine:_san(f.cuisine),schedule:_san(f.schedule),description:_san(f.description),owner:_san(f.owner),phone:_san(f.phone),menu:[],status:"pending",tier:"free",waitlist:f.waitlist,createdAt:serverTimestamp()});
-      submitToSheet({type:"vendor",truck:_san(f.truck),cuisine:_san(f.cuisine),schedule:_san(f.schedule),description:_san(f.description),owner:_san(f.owner),email:_san(f.email),phone:_san(f.phone),waitlist:f.waitlist});
-      if(f.waitlist){
-        await addDoc(collection(db,"waitlist"),{name:_san(f.owner),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:"Applied during signup",status:"new",createdAt:serverTimestamp()});
-        submitToSheet({type:"waitlist",name:_san(f.owner),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:"Applied during signup"});
-      }
-      setStep(4);
-    }catch(e){
-      if(e.code==="auth/email-already-in-use")setErr("Email already registered. Try logging in.");
-      else setErr(e.message||"Something went wrong.");
-    }
-    setLoading(false);
-  };
-
-  if(step===4)return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:380}}><div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Application submitted!</h2><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>Pending approval. We review fast. Log in to check status.</p>{f.waitlist&&<p style={{fontSize:12,fontWeight:500,background:"var(--accentL)",color:"var(--accent)",padding:"8px 14px",borderRadius:8,display:"inline-block",marginTop:10}}>Verified waitlist applied</p>}<div style={{marginTop:28,display:"flex",gap:8,justifyContent:"center"}}><Btn variant="accent" onClick={()=>go("/dashboard")}>Dashboard</Btn><Btn variant="outline" onClick={()=>go("/")}>Home</Btn></div></div></div>;
-
-  return<FormPage go={go} title="Join as a Vendor" subtitle={`Step ${step} of 3`}><div style={{display:"flex",gap:3,marginBottom:24}}>{[1,2,3].map(s=><div key={s} style={{flex:1,height:2,borderRadius:2,background:s<=step?"var(--accent)":"var(--line)"}}/>)}</div>{err&&<div style={{background:"#FFEBEE",color:"#C62828",padding:"10px 14px",borderRadius:8,fontSize:13,marginBottom:16}}>{err}</div>}<div className="ani d1" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}>
-    {/* SECURITY: Honeypot field */}
-    <HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/>
-    {step===1&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Business Info</h3><Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck name"/><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cuisines.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div><Input label="Schedule" value={f.schedule} onChange={e=>u("schedule",e.target.value)} placeholder="e.g. Tue-Sat 11am-8pm"/><Input label="Description" value={f.description} onChange={e=>u("description",e.target.value)} placeholder="What you serve..." textarea rows={3}/><div style={{display:"flex",justifyContent:"flex-end",marginTop:6}}><Btn variant="accent" onClick={()=>setStep(2)}>Continue</Btn></div></>}
-    {step===2&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Your Account</h3><Input label="Owner Name" value={f.owner} onChange={e=>u("owner",e.target.value)} placeholder="Full name"/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/><Input label="Create Password" value={f.password} onChange={e=>u("password",e.target.value)} placeholder="At least 6 characters" type="password"/><Input label="Phone" value={f.phone} onChange={e=>u("phone",e.target.value)} placeholder="(804) 555-0000"/><div style={{display:"flex",justifyContent:"space-between",marginTop:6}}><Btn variant="ghost" onClick={()=>setStep(1)}>Back</Btn><Btn variant="accent" onClick={()=>setStep(3)}>Continue</Btn></div></>}
-    {step===3&&<><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Verified Access</h3><div style={{background:"var(--tint)",borderRadius:8,padding:16,marginBottom:18,border:"1px solid var(--line)"}}><h4 style={{fontSize:13,fontWeight:600,marginBottom:4}}>Verified Vendor tier. Launching soon.</h4><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300,marginBottom:10}}>Priority placement, direct leads, category protection.</p><label style={{display:"flex",alignItems:"flex-start",gap:8,cursor:"pointer"}}><input type="checkbox" checked={f.waitlist} onChange={e=>u("waitlist",e.target.checked)} style={{marginTop:2,accentColor:"var(--accent)"}}/><span style={{fontSize:13,lineHeight:1.5}}>Add me to the waitlist.</span></label></div><div style={{display:"flex",justifyContent:"space-between"}}><Btn variant="ghost" onClick={()=>setStep(2)}>Back</Btn><Btn variant="accent" onClick={submit} disabled={loading}>{loading?"Creating...":"Join Network"}</Btn></div></>}
-  </div></FormPage>}
-
+/* ================================================================ VENDOR LOGIN ================================================================ */
 function VendorLogin({go}){
-  const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[err,setErr]=useState("");const[loading,setLoading]=useState(false);
-  const login=async()=>{setErr("");setLoading(true);try{await signInWithEmailAndPassword(auth,email,pw);go("/dashboard")}catch(e){if(e.code==="auth/invalid-credential"||e.code==="auth/wrong-password")setErr("Wrong email or password.");else if(e.code==="auth/user-not-found")setErr("No account. Join as a vendor first.");else setErr("Something went wrong.")}setLoading(false)};
-  return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{width:"100%",maxWidth:380,padding:"clamp(20px,3vw,32px)",borderRadius:10,background:"var(--card)",border:"1px solid var(--line)"}}><h2 style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 4px",textAlign:"center"}}>Vendor Login</h2><p style={{fontSize:12,color:"var(--sub)",marginBottom:20,textAlign:"center"}}>Sign in to manage your profile and see events.</p>{err&&<div style={{background:"#FFEBEE",color:"#C62828",padding:"10px 14px",borderRadius:8,fontSize:12,marginBottom:14}}>{err}</div>}<Input label="Email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" type="email"/><Input label="Password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Your password" type="password"/><Btn variant="accent" full onClick={login} disabled={loading}>{loading?"Signing in...":"Sign In"}</Btn><p style={{fontSize:12,color:"var(--mute)",textAlign:"center",marginTop:14}}>No account? <span onClick={()=>go("/join")} style={{color:"var(--accent)",cursor:"pointer",fontWeight:500}}>Join as a Vendor</span></p></div></div>}
+  const[email,setEmail]=useState("");const[pw,setPw]=useState("");const[err,setErr]=useState("");const[loading,setLoading]=useState(false);const[resetSent,setResetSent]=useState(false);
+  const login=async()=>{setErr("");setLoading(true);try{await signInWithEmailAndPassword(auth,email,pw);go("/dashboard")}catch(e){if(e.code==="auth/invalid-credential"||e.code==="auth/wrong-password")setErr("Wrong email or password.");else if(e.code==="auth/user-not-found")setErr("No account found.");else setErr("Something went wrong.")}setLoading(false)};
+  const resetPw=async()=>{if(!_validEmail(email)){alert("Enter your email first.");return}try{await sendPasswordResetEmail(auth,email);setResetSent(true);setErr("")}catch{setErr("Could not send reset email.")}};
+  return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{width:"100%",maxWidth:380,padding:"clamp(20px,3vw,32px)",borderRadius:10,background:"var(--card)",border:"1px solid var(--line)"}}><h2 style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 4px",textAlign:"center"}}>Vendor Login</h2><p style={{fontSize:12,color:"var(--sub)",marginBottom:20,textAlign:"center"}}>Sign in to respond to events.</p>{err&&<div style={{background:"#FFEBEE",color:"#C62828",padding:"10px 14px",borderRadius:8,fontSize:12,marginBottom:14}}>{err}</div>}{resetSent&&<div style={{background:"var(--greenL)",color:"var(--green)",padding:"10px 14px",borderRadius:8,fontSize:12,marginBottom:14}}>Reset email sent!</div>}<Input label="Email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="you@email.com" type="email"/><Input label="Password" value={pw} onChange={e=>setPw(e.target.value)} placeholder="Your password" type="password"/><Btn variant="accent" full onClick={login} disabled={loading}>{loading?"Signing in...":"Sign In"}</Btn><div style={{display:"flex",justifyContent:"space-between",marginTop:14}}><span style={{fontSize:12,color:"var(--mute)"}}>No account? <span onClick={()=>go("/join")} style={{color:"var(--accent)",cursor:"pointer",fontWeight:500}}>Join</span></span><span style={{fontSize:12,color:"var(--mute)",cursor:"pointer"}} onClick={resetPw}>Forgot password?</span></div></div></div>
+}
 
+/* ================================================================ VENDOR DASHBOARD ================================================================ */
 function VendorDashboard({go,user}){
-  const[tab,setTab]=useState("events");const[vendor,setVendor]=useState(null);const[events,setEvents]=useState([]);const[loading,setLoading]=useState(true);const[saving,setSaving]=useState(false);const[profile,setProfile]=useState({});const[menu,setMenu]=useState([]);const[ni,sNi]=useState({name:"",price:"",desc:""});
-  useEffect(()=>{if(!user)return;const unsub=onSnapshot(doc(db,"vendors",user.uid),(snap)=>{if(snap.exists()){const d=snap.data();setVendor(d);setProfile(d);setMenu(d.menu||[])}setLoading(false)});return unsub},[user]);
-  useEffect(()=>{if(!vendor||vendor.status!=="approved")return;const unsub=onSnapshot(query(collection(db,"events"),orderBy("createdAt","desc")),(snap)=>{const now=Date.now();const evts=snap.docs.map(d=>({id:d.id,...d.data()})).filter(e=>{if(vendor.tier==="verified")return true;if(!e.createdAt)return false;const created=e.createdAt.toDate?e.createdAt.toDate().getTime():0;return(now-created)>24*60*60*1000});setEvents(evts)});return unsub},[vendor]);
-  const saveProfile=async()=>{setSaving(true);try{await updateDoc(doc(db,"vendors",user.uid),{truck:_san(profile.truck),cuisine:_san(profile.cuisine),schedule:_san(profile.schedule),description:_san(profile.description),owner:_san(profile.owner),phone:_san(profile.phone),menu})}catch(e){alert("Error saving.")}setSaving(false)};
+  const[tab,setTab]=useState("events");const[vendor,setVendor]=useState(null);const[events,setEvents]=useState([]);const[myResponses,setMyResponses]=useState([]);const[loading,setLoading]=useState(true);const[saving,setSaving]=useState(false);const[profile,setProfile]=useState({});const[menu,setMenu]=useState([]);const[ni,sNi]=useState({name:"",price:"",desc:""});const[evtFilter,setEvtFilter]=useState("all");
+  const{show,Toast}=useToast();
+  useEffect(()=>{if(!user)return;const unsub=onSnapshot(doc(db,"vendors",user.uid),snap=>{if(snap.exists()){const d=snap.data();setVendor(d);setProfile(d);setMenu(d.menu||[])}setLoading(false)});return unsub},[user]);
+  useEffect(()=>{if(!vendor||vendor.status!=="approved")return;const unsub=onSnapshot(query(collection(db,"events"),orderBy("createdAt","desc")),snap=>{const now=Date.now();setEvents(snap.docs.map(d=>({id:d.id,...d.data()})).filter(e=>{if(e.status==="closed")return false;if(vendor.tier==="verified")return true;if(!e.createdAt)return false;return(now-e.createdAt.toDate().getTime())>86400000}))});return unsub},[vendor]);
+  useEffect(()=>{if(!user)return;const unsub=onSnapshot(query(collection(db,"responses"),where("vendorId","==",user.uid),orderBy("createdAt","desc")),snap=>{setMyResponses(snap.docs.map(d=>({id:d.id,...d.data()})))});return unsub},[user]);
+  const saveProfile=async()=>{setSaving(true);try{await updateDoc(doc(db,"vendors",user.uid),{truck:_san(profile.truck),cuisine:_san(profile.cuisine),schedule:_san(profile.schedule),description:_san(profile.description),owner:_san(profile.owner),phone:_san(profile.phone),menu});show("Saved!")}catch{alert("Error.")}setSaving(false)};
   if(loading)return<div style={{paddingTop:54}}><Loader/></div>;
-  if(!vendor)return<div style={{paddingTop:54,padding:40,textAlign:"center"}}><p>No vendor profile found.</p><Btn variant="outline" onClick={()=>go("/join")}>Join as a Vendor</Btn></div>;
-  if(vendor.status==="pending")return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:400}}><Badge text="PENDING APPROVAL" color="orange"/><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"16px 0 10px"}}>Application under review.</h2><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>Reviewing <strong>{vendor.truck}</strong>. Full dashboard and events unlock once approved.</p><p style={{fontSize:12,color:"var(--mute)",marginTop:16}}>Usually less than 24 hours.</p><div style={{marginTop:28}}><Btn variant="outline" onClick={async()=>{await signOut(auth);go("/")}}>Back to Home</Btn></div></div></div>;
-  if(vendor.status==="rejected")return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:400}}><Badge text="NOT APPROVED" color="red"/><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"16px 0 10px"}}>Not approved.</h2><p style={{fontSize:14,color:"var(--sub)"}}>Contact us if you think this was a mistake.</p><div style={{marginTop:28}}><Btn variant="outline" onClick={async()=>{await signOut(auth);go("/")}}>Home</Btn></div></div></div>;
-  const up=(k,v)=>setProfile({...profile,[k]:v});
-  return<div style={{paddingTop:54}}><section style={{padding:"24px 20px 40px"}}><W style={{padding:0,maxWidth:920}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:20,flexWrap:"wrap",gap:12}}><div style={{display:"flex",alignItems:"center",gap:10}}><h1 style={{fontSize:20,fontWeight:400,fontFamily:"var(--serif)"}}>{vendor.truck||"Dashboard"}</h1><Badge text={vendor.tier==="verified"?"VERIFIED":"FREE"} color={vendor.tier==="verified"?"accent":"gray"}/></div><Btn variant="ghost" size="sm" onClick={async()=>{await signOut(auth);go("/")}}>Logout</Btn></div>
-    <div style={{display:"flex",gap:2,marginBottom:24,borderBottom:"1px solid var(--line)",overflowX:"auto"}}>{["events","profile","menu"].map(t=><button key={t} onClick={()=>setTab(t)} style={{padding:"10px 14px",fontSize:13,fontWeight:500,color:tab===t?"var(--ink)":"var(--mute)",borderBottom:tab===t?"2px solid var(--accent)":"2px solid transparent",textTransform:"capitalize",whiteSpace:"nowrap"}}>{t==="events"?`Events (${events.length})`:t}</button>)}</div>
-    {tab==="events"&&<div>{vendor.tier!=="verified"&&<div style={{background:"var(--accentL)",borderRadius:8,padding:"12px 16px",marginBottom:20,fontSize:12,color:"var(--accent)"}}><strong>Free tier:</strong> Events show 24hrs after posting. <span onClick={()=>go("/access")} style={{textDecoration:"underline",cursor:"pointer"}}>Upgrade to Verified</span> for instant access.</div>}{events.length===0?<EmptyState text="No events yet. Check back soon."/>:events.map(e=><div key={e.id} style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(16px,2.5vw,24px)",marginBottom:12}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10,flexWrap:"wrap",gap:8}}><div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontSize:14,fontWeight:600}}>{e.eventType||"Event"}</span><StatusBadge status={e.status}/></div><span style={{fontSize:12,color:"var(--mute)"}}>{e.date}{e.time?" at "+e.time:""}</span></div>{e.budget&&<span style={{fontSize:13,fontWeight:600,fontFamily:"var(--mono)",color:"var(--green)"}}>{e.budget}</span>}</div><div style={{display:"flex",flexWrap:"wrap",gap:"6px 16px",fontSize:12,color:"var(--sub)"}}>{e.location&&<span>{"\ud83d\udccd"} {e.location}</span>}{e.attendance&&<span>{"\ud83d\udc65"} {e.attendance} guests</span>}{e.cuisine&&<span>{"\ud83c\udf7d"} {e.cuisine}</span>}</div>{e.notes&&<p style={{fontSize:12,color:"var(--sub)",marginTop:8,lineHeight:1.6}}>{e.notes}</p>}</div>)}</div>}
-    {tab==="profile"&&<div style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(16px,3vw,28px)",maxWidth:520}}><h3 style={{fontSize:15,fontWeight:600,marginBottom:18}}>Truck Profile</h3><Input label="Truck Name" value={profile.truck||""} onChange={e=>up("truck",e.target.value)} placeholder="Your truck name"/><Input label="Cuisine" value={profile.cuisine||""} onChange={e=>up("cuisine",e.target.value)} placeholder="e.g. BBQ"/><Input label="Owner" value={profile.owner||""} onChange={e=>up("owner",e.target.value)} placeholder="Your name"/><Input label="Phone" value={profile.phone||""} onChange={e=>up("phone",e.target.value)} placeholder="(804) 555-0000"/><Input label="Schedule" value={profile.schedule||""} onChange={e=>up("schedule",e.target.value)} placeholder="e.g. Tue-Sat"/><Input label="Description" value={profile.description||""} onChange={e=>up("description",e.target.value)} placeholder="About your truck..." textarea rows={3}/><Btn variant="accent" full onClick={saveProfile} disabled={saving}>{saving?"Saving...":"Save Profile"}</Btn></div>}
-    {tab==="menu"&&<div style={{maxWidth:580}}><h3 style={{fontSize:15,fontWeight:600,marginBottom:16}}>Menu ({menu.length})</h3>{menu.map((m,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--line)"}}><div><div style={{fontSize:13,fontWeight:500}}>{m.name}</div></div><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontWeight:600,fontFamily:"var(--mono)"}}>${m.price}</span><button onClick={()=>{const nm=[...menu];nm.splice(i,1);setMenu(nm)}} style={{fontSize:11,color:"var(--mute)",padding:"3px 6px",borderRadius:4,border:"1px solid var(--line)"}}>x</button></div></div>)}<div style={{background:"var(--tint)",borderRadius:8,padding:14,marginTop:16}}><p style={{fontSize:11,fontWeight:500,color:"var(--sub)",marginBottom:8}}>ADD ITEM</p><div style={{display:"flex",gap:6,marginBottom:6}}><input value={ni.name} onChange={e=>sNi({...ni,name:e.target.value})} placeholder="Item" style={{flex:1,padding:"9px 10px",borderRadius:6,border:"1px solid var(--line)",fontSize:13}}/><input value={ni.price} onChange={e=>sNi({...ni,price:e.target.value})} placeholder="$" style={{width:60,padding:"9px 10px",borderRadius:6,border:"1px solid var(--line)",fontSize:13}}/></div><Btn variant="accent" full size="sm" onClick={()=>{if(ni.name&&ni.price){setMenu([...menu,{name:ni.name,price:Number(ni.price),desc:ni.desc}]);sNi({name:"",price:"",desc:""})}}}>Add</Btn></div><div style={{marginTop:16}}><Btn variant="accent" full onClick={saveProfile} disabled={saving}>{saving?"Saving...":"Save Menu"}</Btn></div></div>}
-  </W></section></div>}
+  if(!vendor)return<div style={{paddingTop:54,padding:40,textAlign:"center"}}><p>No vendor profile.</p><Btn variant="outline" onClick={()=>go("/join")}>Join</Btn></div>;
+  if(vendor.status==="pending")return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:400}}><Badge text="PENDING" color="orange"/><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"16px 0 10px"}}>Application under review</h2><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7}}>Reviewing <strong>{vendor.truck}</strong>. Usually under 24 hours.</p><Btn variant="outline" onClick={async()=>{await signOut(auth);go("/")}} style={{marginTop:28}}>Home</Btn></div></div>;
+  if(vendor.status==="rejected")return<div style={{paddingTop:54,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",padding:20}}><div className="ani" style={{textAlign:"center",maxWidth:400}}><Badge text="NOT APPROVED" color="red"/><h2 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",margin:"16px 0 10px"}}>Not approved</h2><p style={{fontSize:14,color:"var(--sub)"}}>Contact us if this is a mistake.</p><Btn variant="outline" onClick={async()=>{await signOut(auth);go("/")}} style={{marginTop:28}}>Home</Btn></div></div>;
+  const up=(k,v)=>setProfile(p=>({...p,[k]:v}));
+  const respIds=myResponses.map(r=>r.eventId);
+  const openEvts=events.filter(e=>e.status!=="booked"&&e.status!=="closed");
+  const bookings=myResponses.filter(r=>r.status==="accepted");
+  const pct=_profilePct(vendor);
+  const filteredEvts=evtFilter==="match"?openEvts.filter(e=>_cuisineMatch(e.cuisine,vendor.cuisine)):openEvts;
 
-function AccessPage({go}){
-  const[done,setDone]=useState(false);const[loading,setLoading]=useState(false);
-  const[f,sF]=useState({name:"",truck:"",cuisine:"",email:"",why:"",_hp:""});const u=(k,v)=>sF({...f,[k]:v});
-  const cs=["BBQ & Smoked","Mexican / Latin","Southern / Soul","Asian Fusion","Breakfast / Brunch","Beverages / Dessert"];
+  return<div style={{paddingTop:54}}><Toast/><section style={{padding:"24px 20px 40px"}}><W style={{padding:0,maxWidth:920}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16,flexWrap:"wrap",gap:12}}><div style={{display:"flex",alignItems:"center",gap:10}}><h1 style={{fontSize:20,fontWeight:400,fontFamily:"var(--serif)"}}>{vendor.truck||"Dashboard"}</h1><Badge text={vendor.tier==="verified"?"VERIFIED":"FREE"} color={vendor.tier==="verified"?"accent":"gray"}/></div><Btn variant="ghost" size="sm" onClick={async()=>{await signOut(auth);go("/")}}>Logout</Btn></div>
+    {/* Profile completeness nudge */}
+    {pct<100&&<div style={{background:"var(--accentL)",borderRadius:10,padding:"14px 18px",marginBottom:16,display:"flex",alignItems:"center",gap:14,flexWrap:"wrap"}}><div style={{flex:1,minWidth:200}}><p style={{fontSize:13,fontWeight:600,color:"var(--accent)",marginBottom:4}}>Complete your profile ({pct}%)</p><p style={{fontSize:12,color:"var(--sub)"}}>Hosts see your profile when reviewing quotes. A complete profile wins more bookings.</p><ProgressBar pct={pct} color="var(--accent)" h={3}/></div><Btn variant="accent" size="sm" onClick={()=>setTab("profile")}>Edit Profile</Btn></div>}
+    {/* Stats */}
+    <div style={{display:"flex",gap:10,marginBottom:16,flexWrap:"wrap"}}>{[["Open Events",openEvts.length,"var(--accent)"],["My Responses",myResponses.length,"var(--blue)"],["Bookings Won",bookings.length,"var(--green)"]].map(([l,v,c])=><div key={l} style={{flex:"1 1 120px",background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"12px 14px"}}><div style={{fontSize:10,fontWeight:600,color:"var(--mute)",fontFamily:"var(--mono)"}}>{l}</div><div style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",color:c,marginTop:2}}>{v}</div></div>)}</div>
+    <TabBar tabs={[{id:"events",label:"Events",count:openEvts.length},{id:"responses",label:"My Responses",count:myResponses.length},{id:"profile",label:"Profile"},{id:"menu",label:"Menu",count:menu.length}]} active={tab} onChange={setTab}/>
+    {/* EVENTS */}
+    {tab==="events"&&<div>
+      {vendor.tier!=="verified"&&<div style={{background:"var(--accentL)",borderRadius:8,padding:"10px 14px",marginBottom:14,fontSize:12,color:"var(--accent)"}}>Free tier: events show 24hrs after posting. <span onClick={()=>go("/access")} style={{textDecoration:"underline",cursor:"pointer"}}>Upgrade</span> for instant access.</div>}
+      <div style={{display:"flex",gap:6,marginBottom:14}}><Chip active={evtFilter==="all"} onClick={()=>setEvtFilter("all")}>All Events</Chip><Chip active={evtFilter==="match"} onClick={()=>setEvtFilter("match")}>Best Matches</Chip></div>
+      {filteredEvts.length===0?<EmptyState text={evtFilter==="match"?"No cuisine matches right now.":"No open events. Check back soon!"} icon={"\ud83d\udccd"}/>:filteredEvts.map(e=>{
+        const responded=respIds.includes(e.id);const full=(e.responseCount||0)>=MAX_RESP;const isMatch=_cuisineMatch(e.cuisine,vendor.cuisine);
+        return<EventCardVendor key={e.id} e={e} vendor={vendor} user={user} responded={responded} full={full} isMatch={isMatch} onSuccess={()=>show("Quote sent!")}/>
+      })}
+    </div>}
+    {/* RESPONSES */}
+    {tab==="responses"&&<div>{myResponses.length===0?<EmptyState text="No responses yet. Check Events tab!" icon={"\ud83d\udce8"}/>:myResponses.map(r=><div key={r.id} style={{background:"var(--card)",borderRadius:10,border:r.status==="accepted"?"1px solid var(--green)":"1px solid var(--line)",padding:"clamp(16px,2.5vw,24px)",marginBottom:10}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8,marginBottom:6}}><div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}><span style={{fontSize:14,fontWeight:600}}>{r.eventType||"Event"}</span><StatusBadge status={r.status}/></div><span style={{fontSize:12,color:"var(--mute)"}}>{r.eventDate}{r.eventLocation?" \u00b7 "+r.eventLocation:""}</span>{r.createdAt&&<span style={{fontSize:11,color:"var(--mute)",marginLeft:8}}>Sent {_timeAgo(r.createdAt)}</span>}</div>{r.quote&&<span style={{fontSize:16,fontWeight:600,fontFamily:"var(--mono)",color:"var(--green)"}}>{r.quote}</span>}</div>{r.message&&<p style={{fontSize:13,color:"var(--sub)",lineHeight:1.6,fontStyle:"italic"}}>"{r.message}"</p>}{r.status==="accepted"&&<div style={{background:"var(--greenL)",borderRadius:8,padding:"12px 16px",marginTop:10}}><p style={{fontSize:13,fontWeight:600,color:"var(--green)",marginBottom:4}}>You got the booking!</p><div style={{fontSize:13}}><strong>{r.hostName}</strong>{r.hostEmail&&<span> \u00b7 {r.hostEmail}</span>}{r.hostPhone&&<span> \u00b7 {r.hostPhone}</span>}</div></div>}{r.status==="declined"&&<p style={{fontSize:12,color:"var(--mute)",marginTop:6}}>Host selected another vendor.</p>}</div>)}</div>}
+    {/* PROFILE */}
+    {tab==="profile"&&<div style={{maxWidth:520}}><div style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(16px,3vw,28px)"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:18}}><h3 style={{fontSize:15,fontWeight:600}}>Truck Profile</h3><Badge text={pct+"%"} color={pct===100?"green":"orange"}/></div><Input label="Truck Name" value={profile.truck||""} onChange={e=>up("truck",e.target.value)} required/><Input label="Cuisine" value={profile.cuisine||""} onChange={e=>up("cuisine",e.target.value)}/><Input label="Owner" value={profile.owner||""} onChange={e=>up("owner",e.target.value)} required/><Input label="Phone" value={profile.phone||""} onChange={e=>up("phone",_fmtPhone(e.target.value))} type="tel"/><Input label="Schedule" value={profile.schedule||""} onChange={e=>up("schedule",e.target.value)} placeholder="e.g. Tue-Sat"/><Input label="Description" value={profile.description||""} onChange={e=>up("description",e.target.value)} placeholder="About your truck..." textarea rows={3}/><Btn variant="accent" full onClick={saveProfile} disabled={saving}>{saving?"Saving...":"Save Profile"}</Btn></div>
+      {/* Profile preview */}
+      <div style={{marginTop:16,background:"var(--tint)",borderRadius:10,padding:16}}><p style={{fontSize:11,fontWeight:600,color:"var(--mute)",marginBottom:10}}>HOW HOSTS SEE YOU</p><div style={{display:"flex",gap:12,alignItems:"flex-start"}}><div style={{fontSize:28,flexShrink:0}}>{_cuisineEmoji(profile.cuisine)}</div><div><div style={{fontSize:15,fontWeight:600}}>{profile.truck||"Your Truck Name"}</div><div style={{fontSize:12,color:"var(--mute)"}}>{"vendor.cuisine"||"Cuisine"} {profile.schedule&&"\u00b7 "+profile.schedule}</div>{profile.description&&<p style={{fontSize:12,color:"var(--sub)",lineHeight:1.5,marginTop:6}}>{profile.description}</p>}</div></div></div>
+    </div>}
+    {/* MENU */}
+    {tab==="menu"&&<div style={{maxWidth:580}}><h3 style={{fontSize:15,fontWeight:600,marginBottom:16}}>Menu ({menu.length})</h3>{menu.map((m,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:"1px solid var(--line)"}}><div style={{fontSize:13,fontWeight:500}}>{m.name}{m.desc&&<span style={{fontSize:11,color:"var(--mute)",marginLeft:6}}>{m.desc}</span>}</div><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontWeight:600,fontFamily:"var(--mono)"}}>${m.price}</span><button onClick={()=>{const nm=[...menu];nm.splice(i,1);setMenu(nm)}} style={{fontSize:11,color:"var(--mute)",padding:"3px 6px",borderRadius:4,border:"1px solid var(--line)"}}>x</button></div></div>)}<div style={{background:"var(--tint)",borderRadius:8,padding:14,marginTop:16}}><p style={{fontSize:11,fontWeight:500,color:"var(--sub)",marginBottom:8}}>ADD ITEM</p><div style={{display:"flex",gap:6,marginBottom:6}}><input value={ni.name} onChange={e=>sNi({...ni,name:e.target.value})} placeholder="Item name" style={{flex:1,padding:"9px 10px",borderRadius:6,border:"1px solid var(--line)",fontSize:13}}/><input value={ni.price} onChange={e=>sNi({...ni,price:e.target.value})} placeholder="$" style={{width:60,padding:"9px 10px",borderRadius:6,border:"1px solid var(--line)",fontSize:13}}/></div><input value={ni.desc} onChange={e=>sNi({...ni,desc:e.target.value})} placeholder="Short description (optional)" style={{width:"100%",padding:"9px 10px",borderRadius:6,border:"1px solid var(--line)",fontSize:13,marginBottom:6}}/><Btn variant="accent" full size="sm" onClick={()=>{if(ni.name&&ni.price){setMenu([...menu,{name:ni.name,price:Number(ni.price),desc:ni.desc}]);sNi({name:"",price:"",desc:""})}}}>Add</Btn></div><div style={{marginTop:16}}><Btn variant="accent" full onClick={saveProfile} disabled={saving}>{saving?"Saving...":"Save Menu"}</Btn></div></div>}
+  </W></section></div>
+}
 
-  /* SECURITY: Set form open timestamp on mount */
-  useEffect(()=>{window._formOpened=Date.now()},[]);
-
-  const submit=async()=>{
-    /* SECURITY: Honeypot check */
-    if(!_honeypotClean(f._hp))return;
-    /* SECURITY: Timing check */
-    if(!_timingOk()){alert("Please take a moment to review your submission.");return}
-    /* SECURITY: Session limit */
-    if(!_canSubmit("waitlist")){alert("Submission limit reached for this session.");return}
-    if(!f.name||!f.truck||!f.email||!f.cuisine){alert("Fill in all fields.");return}
-    if(!_validEmail(f.email)){alert("Valid email required.");return}
-    setLoading(true);
-    try{
-      await addDoc(collection(db,"waitlist"),{name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:_san(f.why),status:"new",createdAt:serverTimestamp()});
-      submitToSheet({type:"waitlist",name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:_san(f.why)});
-      setDone(true);
-    }catch(e){alert("Something went wrong.")}
-    setLoading(false);
-  };
-
-  return<FormPage go={go} title="Verified Vendor Access" subtitle="Priority access to booking requests and protected category placement.">
-    <div className="ani d1" style={{display:"flex",flexDirection:"column",gap:1,background:"var(--line)",borderRadius:10,overflow:"hidden",marginBottom:32}}>{[["Priority Placement","Appear first to event hosts."],["Direct Lead Routing","Requests matched to your cuisine."],["Category Protection","Limited slots. Competition capped."],["Featured Visibility","Prominent in directory and matching."]].map(([t,d])=><div key={t} style={{background:"var(--card)",padding:"clamp(18px,3vw,28px)"}}><h3 style={{fontSize:13,fontWeight:600,marginBottom:3}}>{t}</h3><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300}}>{d}</p></div>)}</div>
-    {!done?<div className="ani d2" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}><h3 style={{fontSize:17,fontWeight:300,fontFamily:"var(--serif)",marginBottom:4}}>Join the waitlist</h3><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,marginBottom:20}}>Limited per cuisine category.</p>
-      {/* SECURITY: Honeypot field */}
-      <HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/>
-      <Input label="Your Name" value={f.name} onChange={e=>u("name",e.target.value)} placeholder="Full name"/><Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck"/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email"/><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{cs.map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div><Input label="Why interested?" value={f.why} onChange={e=>u("why",e.target.value)} placeholder="About your truck..." textarea rows={3}/><Btn variant="accent" full onClick={submit} disabled={loading}>{loading?"Submitting...":"Submit Application"}</Btn></div>
-    :<div className="ani" style={{textAlign:"center",padding:"40px 0"}}><div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div><h3 style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Application received.</h3><p style={{fontSize:14,color:"var(--sub)",lineHeight:1.7,fontWeight:300}}>We'll reach out when verified tier launches.</p></div>}
-  </FormPage>}
-
-function AdminLogin({onLogin}){const[pw,setPw]=useState("");const[e,sE]=useState(false);const[l,sL]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div className="ani" style={{width:"100%",maxWidth:320,padding:28,borderRadius:10,background:"#141414",border:"1px solid #222",textAlign:"center"}}><h2 style={{fontSize:18,fontWeight:500,color:"#fff",marginBottom:20}}>Admin Access</h2>{e&&<div style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid.</div>}<input value={pw} onChange={ev=>setPw(ev.target.value)} onKeyDown={async ev=>{if(ev.key==="Enter"){sL(true);const ok=await onLogin(pw);if(!ok){sE(true);setPw("")}sL(false)}}} type="password" placeholder="Password" style={{width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid #333",fontSize:14,background:"#0A0A0A",color:"#fff",marginBottom:10,textAlign:"center"}}/><button onClick={async()=>{sL(true);const ok=await onLogin(pw);if(!ok){sE(true);setPw("")}sL(false)}} style={{width:"100%",padding:11,borderRadius:8,background:"#fff",color:"#000",fontSize:14,fontWeight:500}}>{l?"...":"Enter"}</button></div></div>}
-
-function PinGate({onUnlock,onCancel}){const[pin,setPin]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div style={{width:"100%",maxWidth:280,textAlign:"center"}}><h2 style={{fontSize:16,fontWeight:500,color:"#fff",marginBottom:20}}>Security PIN</h2>{e&&<div style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Wrong PIN.</div>}<input value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={async e=>{if(e.key==="Enter"){if(await _check(pin,SH))onUnlock();else{sE(true);setPin("")}}}} type="password" maxLength={4} placeholder={"\u2022\u2022\u2022\u2022"} style={{width:"100%",padding:12,borderRadius:8,border:"1px solid #333",fontSize:22,letterSpacing:10,background:"#0A0A0A",color:"#fff",textAlign:"center",marginBottom:14}}/><div style={{display:"flex",gap:8}}><button onClick={onCancel} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #333",color:"#666",fontSize:13}}>Cancel</button><button onClick={async()=>{if(await _check(pin,SH))onUnlock();else{sE(true);setPin("")}}} style={{flex:1,padding:10,borderRadius:8,background:"#fff",color:"#000",fontSize:13,fontWeight:500}}>Unlock</button></div></div></div>}
-
-function AdminDash({go}){
-  const[page,setPage]=useState("dashboard");
-  const[vendors,setVendors]=useState([]);const[events,setEvents]=useState([]);const[waitlist,setWaitlist]=useState([]);const[loading,setLoading]=useState(true);
-  const[mobSide,setMobSide]=useState(false);
-
-  useEffect(()=>{
-    const u1=onSnapshot(query(collection(db,"vendors"),orderBy("createdAt","desc")),(s)=>{setVendors(s.docs.map(d=>({id:d.id,...d.data()})));setLoading(false)});
-    const u2=onSnapshot(query(collection(db,"events"),orderBy("createdAt","desc")),(s)=>{setEvents(s.docs.map(d=>({id:d.id,...d.data()})))});
-    const u3=onSnapshot(query(collection(db,"waitlist"),orderBy("createdAt","desc")),(s)=>{setWaitlist(s.docs.map(d=>({id:d.id,...d.data()})))});
-    return()=>{u1();u2();u3()}
-  },[]);
-
-  const updV=async(id,status)=>{await updateDoc(doc(db,"vendors",id),{status})};
-  const updT=async(id,tier)=>{await updateDoc(doc(db,"vendors",id),{tier})};
-  const updE=async(id,status)=>{await updateDoc(doc(db,"events",id),{status})};
-
-  const pending=vendors.filter(v=>v.status==="pending");
-  const approved=vendors.filter(v=>v.status==="approved");
-  const rejected=vendors.filter(v=>v.status==="rejected");
-  const verified=vendors.filter(v=>v.tier==="verified");
-  const newEvents=events.filter(e=>e.status==="new");
-  const matchedEvents=events.filter(e=>e.status==="matched");
-  const totalAttendees=events.reduce((a,e)=>a+Number(e.attendance||0),0);
-
-  /* Spam detection heuristics */
-  const spamPatterns=[/crypto/i,/bitcoin/i,/nft/i,/forex/i,/casino/i,/buy now/i,/free money/i,/click here/i,/t\.me\//i,/bit\.ly/i,/wa\.me/i,/\$\$\$/];
-  const detectSpam=(text)=>{if(!text)return null;for(const p of spamPatterns){if(p.test(text))return{pattern:p.source,confidence:Math.floor(85+Math.random()*13)}}return null};
-  const flaggedVendors=vendors.map(v=>{const spam=detectSpam(v.truck)||detectSpam(v.description)||detectSpam(v.owner);return spam?{...v,spam}:null}).filter(Boolean);
-  const flaggedWaitlist=waitlist.map(w=>{const spam=detectSpam(w.truck)||detectSpam(w.why)||detectSpam(w.name);return spam?{...w,spam}:null}).filter(Boolean);
-  const allFlagged=[...flaggedVendors.map(f=>({...f,src:"vendor"})),...flaggedWaitlist.map(f=>({...f,src:"waitlist"}))];
-
-  /* At-risk: rejected or vendors with no description/phone */
-  const atRisk=vendors.filter(v=>v.status==="approved"&&(!v.phone||!v.description||!v.schedule));
-
-  const _c={bg:"#0A0A0A",card:"#141414",cardH:"#1A1A1A",border:"#222",borderL:"#333",t1:"#fff",t2:"#ccc",t3:"#888",t4:"#555",accent:"#D4482C",accentBg:"rgba(212,72,44,.12)",green:"#2D8C3C",greenBg:"rgba(45,140,60,.12)",orange:"#E65100",orangeBg:"rgba(230,81,0,.12)",red:"#DC2626",redBg:"rgba(220,38,38,.12)",purple:"#9333EA",purpleBg:"rgba(147,51,234,.12)",blue:"#2563EB",blueBg:"rgba(37,99,235,.12)"};
-  const sideW=200;
-
-  const navItems=[
-    {id:"dashboard",label:"Dashboard",icon:"\ud83d\udcca"},
-    {id:"trucks",label:"Truck Tracker",icon:"\ud83d\ude9a"},
-    {id:"events",label:"Events",icon:"\ud83d\udccd"},
-    {id:"members",label:"Members",icon:"\ud83d\udc65",badge:pending.length||null},
-    {id:"moderation",label:"Moderation",icon:"\ud83d\udee1\ufe0f",badge:allFlagged.length||null},
-    {id:"security",label:"Security",icon:"\ud83d\udd12"},
-    {id:"settings",label:"Settings",icon:"\u2699\ufe0f"},
-  ];
-
-  const SideNav=()=><div style={{width:sideW,minHeight:"100vh",background:_c.card,borderRight:`1px solid ${_c.border}`,padding:"20px 0",position:"fixed",left:0,top:0,zIndex:200,overflowY:"auto"}}>
-    <div style={{padding:"0 16px 20px",display:"flex",alignItems:"center",gap:8,borderBottom:`1px solid ${_c.border}`,marginBottom:8}}>
-      <span style={{fontSize:20}}>{"🚚"}</span>
-      <div><div style={{fontSize:14,fontWeight:700,color:"var(--accent)",fontFamily:"var(--mono)"}}>FAFT</div><div style={{fontSize:9,color:_c.t4,fontFamily:"var(--mono)",letterSpacing:".04em"}}>RVA ADMIN</div></div>
+/* ================================================================ EVENT CARD FOR VENDOR ================================================================ */
+function EventCardVendor({e,vendor,user,responded,full,isMatch,onSuccess}){
+  const[showForm,setShowForm]=useState(false);const[quote,setQuote]=useState("");const[message,setMessage]=useState("");const[availability,setAvailability]=useState("");const[sending,setSending]=useState(false);
+  const sendResponse=async()=>{if(!quote.trim()){alert("Enter a quote.");return}setSending(true);try{await addDoc(collection(db,"responses"),{eventId:e.id,eventType:e.eventType||"Event",eventDate:e.date||"",eventLocation:e.location||"",vendorId:user.uid,truckName:vendor.truck||"",vendorCuisine:vendor.cuisine||"",vendorTier:vendor.tier||"free",vendorEmail:vendor.email||"",vendorPhone:vendor.phone||"",vendorDescription:vendor.description||"",hostName:e.name||"",hostEmail:e.email||"",hostPhone:e.phone||"",quote:_san(quote),message:_san(message),availability:_san(availability),status:"sent",createdAt:serverTimestamp()});await updateDoc(doc(db,"events",e.id),{responseCount:(e.responseCount||0)+1});submitToSheet({type:"response",eventId:e.id,truck:vendor.truck,quote});setShowForm(false);onSuccess?.()}catch{alert("Error.")}setSending(false)};
+  const age=_daysSince(e.createdAt);
+  return<div style={{background:"var(--card)",borderRadius:10,border:isMatch?"1px solid var(--accent)":"1px solid var(--line)",padding:"clamp(16px,2.5vw,24px)",marginBottom:12}}>
+    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:8,flexWrap:"wrap",gap:8}}>
+      <div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:3,flexWrap:"wrap"}}><span style={{fontSize:14,fontWeight:600}}>{e.eventType||"Event"}</span><StatusBadge status={e.status}/>{isMatch&&<Badge text="CUISINE MATCH" color="accent"/>}{(e.responseCount||0)>0&&<Badge text={(e.responseCount||0)+"/"+MAX_RESP+" quotes"} color="gray"/>}</div><span style={{fontSize:12,color:"var(--mute)"}}>{e.date}{e.time?" at "+e.time:""}{age!=null&&<span> \u00b7 {age===0?"today":age+"d ago"}</span>}</span></div>
+      {e.budget&&<span style={{fontSize:15,fontWeight:600,fontFamily:"var(--mono)",color:"var(--green)"}}>{e.budget}</span>}
     </div>
-    {navItems.map(n=><button key={n.id} onClick={()=>{setPage(n.id);setMobSide(false)}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 16px",fontSize:13,fontWeight:page===n.id?600:400,color:page===n.id?"var(--accent)":_c.t3,background:page===n.id?_c.accentBg:"transparent",borderLeft:page===n.id?"3px solid var(--accent)":"3px solid transparent",transition:"all .15s",position:"relative"}}>
-      <span style={{fontSize:15}}>{n.icon}</span>{n.label}
-      {n.badge&&<span style={{position:"absolute",right:12,background:_c.red,color:"#fff",fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:10,minWidth:18,textAlign:"center"}}>{n.badge}</span>}
-    </button>)}
-    <div style={{position:"absolute",bottom:16,left:0,right:0,padding:"0 16px"}}><div style={{fontSize:10,color:_c.t4,fontFamily:"var(--mono)"}}>{new Date().toLocaleTimeString()}</div></div>
-  </div>;
-
-  const StatCard=({label,value,sub,color})=><div style={{background:_c.card,borderRadius:10,padding:"16px 18px",border:`1px solid ${_c.border}`,flex:"1 1 140px",minWidth:140}}>
-    <div style={{fontSize:10,fontWeight:600,color:_c.t4,fontFamily:"var(--mono)",letterSpacing:".04em",marginBottom:6}}>{label}</div>
-    <div style={{fontSize:28,fontWeight:300,color:color||"var(--accent)",fontFamily:"var(--serif)"}}>{value}</div>
-    {sub&&<div style={{fontSize:11,color:_c.t4,marginTop:2}}>{sub}</div>}
-  </div>;
-
-  const MemberCard=({name,type,date,details,onApprove,onReject,initial,color})=><div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20,marginBottom:10}}>
-    <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:12}}>
-      <div style={{display:"flex",gap:14,alignItems:"flex-start"}}>
-        <div style={{width:44,height:44,borderRadius:99,background:color||_c.purpleBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16,fontWeight:700,color:_c.t1,flexShrink:0}}>{initial}</div>
-        <div>
-          <div style={{display:"flex",alignItems:"center",gap:8,flexWrap:"wrap"}}><span style={{fontSize:15,fontWeight:600,color:_c.t1}}>{name}</span><span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:4,background:type==="Food Truck"?_c.orangeBg:type==="Event Host"?_c.greenBg:_c.blueBg,color:type==="Food Truck"?_c.orange:type==="Event Host"?_c.green:_c.blue}}>{type==="Food Truck"?"\ud83d\ude9a":"📋"} {type}</span></div>
-          <div style={{fontSize:12,color:_c.t4,marginTop:2}}>Applied {date}</div>
-          {details&&details.map((d,i)=><div key={i} style={{fontSize:12,color:_c.t3,marginTop:4,fontStyle:"italic"}}>"{d}"</div>)}
-        </div>
-      </div>
-      <div style={{display:"flex",gap:8}}>
-        {onApprove&&<button onClick={onApprove} style={{padding:"8px 16px",borderRadius:8,border:`1px solid ${_c.green}`,color:_c.green,fontSize:12,fontWeight:600,background:"transparent"}}>{"\u2713"} Approve</button>}
-        {onReject&&<button onClick={onReject} style={{padding:"8px 16px",borderRadius:8,border:`1px solid ${_c.red}`,color:_c.red,fontSize:12,fontWeight:600,background:"transparent"}}>{"\u2715"} Decline</button>}
-      </div>
-    </div>
-  </div>;
-
-  const PageContent=()=>{
-    if(loading)return<Loader/>;
-
-    /* ===== DASHBOARD ===== */
-    if(page==="dashboard")return<div>
-      <h1 style={{fontSize:28,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Command Center</h1>
-      <p style={{fontSize:13,color:_c.t4,marginBottom:24}}>Find a Food Truck RVA {"\u2014"} {vendors.length>0?`${vendors.length} vendors`:""}{events.length>0?` \u00b7 ${events.length} events`:""}</p>
-
-      <div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:28}}>
-        <StatCard label="MEMBERS" value={vendors.length} sub={pending.length>0?`+${pending.length} pending`:"\u2014"}/>
-        <StatCard label="EVENTS" value={events.length} sub={`${totalAttendees} total attendees`} color="#fff"/>
-        <StatCard label="VERIFIED" value={verified.length} sub={`of ${approved.length} approved`} color={_c.green}/>
-        <StatCard label="SPAM CAUGHT" value={allFlagged.length} sub={allFlagged.length>0?"review in moderation":"all clear"} color={allFlagged.length>0?_c.red:_c.green}/>
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14,marginBottom:28}}>
-        {/* Pending Actions */}
-        <div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20,gridColumn:pending.length>0||allFlagged.length>0?"span 1":"span 2"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14}}>{"⚡"}</span><span style={{fontSize:14,fontWeight:600,color:_c.t1}}>Pending Actions</span></div>
-            <span style={{fontSize:10,fontWeight:600,padding:"3px 8px",borderRadius:4,background:_c.orangeBg,color:_c.orange}}>{pending.length+allFlagged.length} items</span>
-          </div>
-          {pending.slice(0,3).map(v=><div key={v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${_c.border}`}}>
-            <div><div style={{fontSize:13,fontWeight:500,color:_c.t2}}>{v.owner||v.truck||"Unknown"}</div><div style={{fontSize:11,color:_c.t4}}>Membership request {"\u00b7"} {v.cuisine?"\ud83d\ude9a "+v.cuisine:""}</div></div>
-            <div style={{display:"flex",gap:6}}><button onClick={()=>updV(v.id,"approved")} style={{width:28,height:28,borderRadius:6,background:_c.greenBg,color:_c.green,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>{"\u2713"}</button><button onClick={()=>updV(v.id,"rejected")} style={{width:28,height:28,borderRadius:6,background:_c.redBg,color:_c.red,fontSize:13,display:"flex",alignItems:"center",justifyContent:"center"}}>{"\u2715"}</button></div>
-          </div>)}
-          {allFlagged.slice(0,3).map((f,i)=><div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${_c.border}`}}>
-            <div><div style={{fontSize:13,fontWeight:500,color:_c.red}}>{"\ud83d\udee1\ufe0f"} Spam: {f.truck||f.name||"Unknown"}</div><div style={{fontSize:11,color:_c.t4}}>{f.spam.confidence}% confidence {"\u00b7"} {f.spam.pattern} pattern</div></div>
-            <button onClick={()=>{if(f.src==="vendor")updV(f.id,"rejected");}} style={{padding:"5px 12px",borderRadius:6,background:_c.red,color:"#fff",fontSize:11,fontWeight:600}}>Remove</button>
-          </div>)}
-          {pending.length===0&&allFlagged.length===0&&<div style={{textAlign:"center",padding:20,color:_c.t4,fontSize:12}}>All clear. No pending actions.</div>}
-        </div>
-
-        {/* Upcoming Events */}
-        <div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14}}>{"\ud83d\udcc5"}</span><span style={{fontSize:14,fontWeight:600,color:_c.t1}}>Upcoming Events</span></div>
-            <button onClick={()=>setPage("events")} style={{fontSize:11,color:_c.t4,border:`1px solid ${_c.border}`,padding:"4px 10px",borderRadius:6}}>View All</button>
-          </div>
-          {events.slice(0,4).map(e=><div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"10px 0",borderBottom:`1px solid ${_c.border}`}}>
-            <div><div style={{fontSize:13,fontWeight:500,color:_c.t2}}>{e.eventType||"Event"}</div><div style={{fontSize:11,color:_c.t4}}>{"\ud83d\udccd"} {e.location||"TBD"} {"\u00b7"} {e.attendance?"\ud83d\ude9a "+e.attendance+" guests":""}</div></div>
-            <div style={{textAlign:"right"}}><div style={{fontSize:12,fontWeight:600,color:"var(--accent)"}}>{e.date||"TBD"}</div><div style={{fontSize:10,color:_c.t4}}>{e.time||""}</div></div>
-          </div>)}
-          {events.length===0&&<div style={{textAlign:"center",padding:20,color:_c.t4,fontSize:12}}>No events yet.</div>}
-        </div>
-      </div>
-
-      {/* Active Trucks */}
-      <div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:16}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14}}>{"\ud83d\ude9a"}</span><span style={{fontSize:14,fontWeight:600,color:_c.t1}}>Active Trucks</span></div>
-          <button onClick={()=>setPage("trucks")} style={{fontSize:11,color:_c.t4,border:`1px solid ${_c.border}`,padding:"4px 10px",borderRadius:6}}>Manage Trucks</button>
-        </div>
-        <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:8}}>
-          {approved.length===0&&<div style={{color:_c.t4,fontSize:12,padding:20}}>No approved trucks yet.</div>}
-          {approved.map(v=><div key={v.id} style={{background:_c.bg,borderRadius:10,border:`1px solid ${_c.border}`,padding:"16px 18px",minWidth:160,flexShrink:0}}>
-            <div style={{fontSize:24,marginBottom:8}}>{v.cuisine?.includes("BBQ")?"\ud83c\udf56":v.cuisine?.includes("Mexican")?"\ud83c\udf2e":v.cuisine?.includes("Asian")?"\ud83c\udf5c":v.cuisine?.includes("Breakfast")?"\ud83e\uddc7":v.cuisine?.includes("Beverage")||v.cuisine?.includes("Dessert")?"\ud83e\uddc3":"\ud83d\ude9a"}</div>
-            <div style={{fontSize:13,fontWeight:600,color:_c.t1,marginBottom:2}}>{v.truck||"Unnamed"}</div>
-            <div style={{fontSize:11,color:_c.t4,marginBottom:6}}>{v.cuisine||"General"}</div>
-            <div style={{display:"flex",alignItems:"center",gap:4}}><div style={{width:6,height:6,borderRadius:99,background:_c.green}}/><span style={{fontSize:10,color:_c.green,fontWeight:500}}>Active</span>{v.tier==="verified"&&<span style={{fontSize:10,color:"var(--accent)",marginLeft:4}}>{"\u2605"}</span>}</div>
-          </div>)}
-        </div>
-      </div>
-    </div>;
-
-    /* ===== TRUCK TRACKER ===== */
-    if(page==="trucks")return<div>
-      <h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Truck Tracker</h1>
-      <p style={{fontSize:13,color:_c.t4,marginBottom:24}}>{vendors.length} total {"\u00b7"} {approved.length} approved {"\u00b7"} {verified.length} verified</p>
-      {vendors.map(v=><div key={v.id} style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:18,marginBottom:10}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
-          <div style={{display:"flex",gap:12,alignItems:"flex-start"}}>
-            <div style={{width:40,height:40,borderRadius:8,background:_c.accentBg,display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,flexShrink:0}}>{v.cuisine?.includes("BBQ")?"\ud83c\udf56":v.cuisine?.includes("Mexican")?"\ud83c\udf2e":"\ud83d\ude9a"}</div>
-            <div>
-              <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:2}}><span style={{fontSize:14,fontWeight:600,color:_c.t1}}>{v.truck||"Unnamed"}</span><StatusBadge status={v.status}/><Badge text={v.tier==="verified"?"VERIFIED":"FREE"} color={v.tier==="verified"?"accent":"gray"}/></div>
-              <div style={{fontSize:12,color:_c.t3}}>{v.cuisine} {"\u00b7"} {v.owner} {"\u00b7"} {v.email}</div>
-              {v.phone&&<div style={{fontSize:11,color:_c.t4,marginTop:2}}>{"\ud83d\udcde"} {v.phone}</div>}
-              {v.schedule&&<div style={{fontSize:11,color:_c.t4}}>{"\ud83d\udcc5"} {v.schedule}</div>}
-              {v.description&&<div style={{fontSize:11,color:_c.t4,marginTop:4,fontStyle:"italic"}}>"{v.description}"</div>}
-            </div>
-          </div>
-          <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-            {v.status==="pending"&&<><Btn variant="success" size="sm" onClick={()=>updV(v.id,"approved")}>Approve</Btn><Btn variant="danger" size="sm" onClick={()=>updV(v.id,"rejected")}>Reject</Btn></>}
-            {v.status==="approved"&&<>{v.tier==="free"?<Btn variant="accent" size="sm" onClick={()=>updT(v.id,"verified")}>Make Verified</Btn>:<Btn variant="ghost" size="sm" onClick={()=>updT(v.id,"free")}>Remove Verified</Btn>}<Btn variant="danger" size="sm" onClick={()=>updV(v.id,"rejected")}>Suspend</Btn></>}
-            {v.status==="rejected"&&<Btn variant="success" size="sm" onClick={()=>updV(v.id,"approved")}>Reinstate</Btn>}
-          </div>
-        </div>
-      </div>)}
-      {vendors.length===0&&<EmptyState text="No vendors yet."/>}
-    </div>;
-
-    /* ===== EVENTS ===== */
-    if(page==="events")return<div>
-      <h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Events</h1>
-      <p style={{fontSize:13,color:_c.t4,marginBottom:24}}>{events.length} total {"\u00b7"} {newEvents.length} new {"\u00b7"} {matchedEvents.length} matched</p>
-      {events.map(e=><div key={e.id} style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:18,marginBottom:10}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:10}}>
-          <div>
-            <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:4}}><span style={{fontSize:14,fontWeight:600,color:_c.t1}}>{e.eventType||"Event"}</span><StatusBadge status={e.status}/></div>
-            <div style={{fontSize:12,color:_c.t3}}>{e.date} {e.time&&"at "+e.time} {"\u00b7"} {e.location} {"\u00b7"} {e.attendance} guests</div>
-            <div style={{fontSize:12,color:_c.t3,marginTop:2}}>{"\ud83d\udc64"} {e.name} {"\u00b7"} {e.email} {"\u00b7"} {e.phone}</div>
-            {e.org&&<div style={{fontSize:11,color:_c.t4,marginTop:2}}>{"\ud83c\udfe2"} {e.org}</div>}
-            {e.cuisine&&<div style={{fontSize:11,color:_c.t4}}>{"\ud83c\udf7d\ufe0f"} {e.cuisine} {e.budget&&"\u00b7 "+e.budget}</div>}
-            {e.notes&&<div style={{fontSize:11,color:_c.t4,marginTop:4,fontStyle:"italic"}}>"{e.notes}"</div>}
-          </div>
-          <div style={{display:"flex",gap:6}}>
-            {e.status==="new"&&<><Btn variant="success" size="sm" onClick={()=>updE(e.id,"matched")}>Match</Btn><Btn variant="ghost" size="sm" onClick={()=>updE(e.id,"closed")}>Close</Btn></>}
-            {e.status==="matched"&&<Btn variant="ghost" size="sm" onClick={()=>updE(e.id,"closed")}>Close</Btn>}
-          </div>
-        </div>
-      </div>)}
-      {events.length===0&&<EmptyState text="No events yet."/>}
-    </div>;
-
-    /* ===== MEMBERS ===== */
-    if(page==="members")return<div>
-      <h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Members</h1>
-      <p style={{fontSize:13,color:_c.t4,marginBottom:24}}>{pending.length} pending approval {"\u00b7"} {waitlist.length} waitlist</p>
-      {pending.length>0&&<><h3 style={{fontSize:13,fontWeight:600,color:_c.t3,marginBottom:12,letterSpacing:".04em"}}>PENDING APPROVAL</h3>
-        {pending.map(v=>{
-          const details=[];if(v.description)details.push(v.description);if(v.schedule)details.push(v.schedule);
-          return<MemberCard key={v.id} name={v.truck||v.owner||"Unknown"} type="Food Truck" date={v.createdAt?.toDate?v.createdAt.toDate().toISOString().slice(0,10):"recent"} details={details.length?details:null} initial={(v.truck||v.owner||"?")[0].toUpperCase()} color={_c.orangeBg} onApprove={()=>updV(v.id,"approved")} onReject={()=>updV(v.id,"rejected")}/>
-        })}</>}
-      {waitlist.length>0&&<><h3 style={{fontSize:13,fontWeight:600,color:_c.t3,marginTop:24,marginBottom:12,letterSpacing:".04em"}}>WAITLIST</h3>
-        {waitlist.map(w=>{
-          const details=[];if(w.why)details.push(w.why);
-          return<MemberCard key={w.id} name={w.truck||w.name||"Unknown"} type="Waitlist" date={w.createdAt?.toDate?w.createdAt.toDate().toISOString().slice(0,10):"recent"} details={details.length?details:null} initial={(w.truck||w.name||"?")[0].toUpperCase()} color={_c.purpleBg}/>
-        })}</>}
-      {pending.length===0&&waitlist.length===0&&<EmptyState text="No pending members."/>}
-    </div>;
-
-    /* ===== MODERATION ===== */
-    if(page==="moderation")return<div>
-      <h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Moderation</h1>
-      <p style={{fontSize:13,color:_c.t4,marginBottom:24}}>Spam detection {"\u00b7"} At-risk users {"\u00b7"} Banned accounts</p>
-
-      <h3 style={{fontSize:13,fontWeight:600,color:_c.red,marginBottom:12,letterSpacing:".04em"}}>{"\ud83d\udee1\ufe0f"} FLAGGED ({allFlagged.length})</h3>
-      {allFlagged.map((f,i)=><div key={i} style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.red}33`,padding:16,marginBottom:8}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8}}>
-          <div>
-            <div style={{fontSize:14,fontWeight:600,color:_c.red}}>{"\ud83d\udee1\ufe0f"} Spam: {f.truck||f.name||"Unknown"}</div>
-            <div style={{fontSize:11,color:_c.t4,marginTop:2}}>{f.spam.confidence}% confidence {"\u00b7"} Pattern: {f.spam.pattern}</div>
-            <div style={{fontSize:11,color:_c.t4}}>Source: {f.src} {"\u00b7"} {f.email}</div>
-          </div>
-          <button onClick={()=>{if(f.src==="vendor")updV(f.id,"rejected")}} style={{padding:"7px 16px",borderRadius:6,background:_c.red,color:"#fff",fontSize:12,fontWeight:600}}>Remove</button>
-        </div>
-      </div>)}
-      {allFlagged.length===0&&<div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20,textAlign:"center",color:_c.t4,fontSize:12,marginBottom:20}}>No spam detected. All clear.</div>}
-
-      <h3 style={{fontSize:13,fontWeight:600,color:_c.orange,marginTop:24,marginBottom:12,letterSpacing:".04em"}}>{"\u26a0\ufe0f"} AT-RISK PROFILES ({atRisk.length})</h3>
-      <p style={{fontSize:11,color:_c.t4,marginBottom:10}}>Approved vendors missing critical info (phone, description, or schedule).</p>
-      {atRisk.map(v=><div key={v.id} style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.orange}33`,padding:14,marginBottom:8}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><span style={{fontSize:13,fontWeight:600,color:_c.t2}}>{v.truck||"Unnamed"}</span><span style={{fontSize:11,color:_c.t4,marginLeft:8}}>Missing: {!v.phone?"phone ":""}{!v.description?"bio ":""}{!v.schedule?"schedule":""}</span></div>
-          <Btn variant="ghost" size="sm" onClick={()=>updV(v.id,"rejected")}>Suspend</Btn>
-        </div>
-      </div>)}
-      {atRisk.length===0&&<div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20,textAlign:"center",color:_c.t4,fontSize:12}}>All approved vendors have complete profiles.</div>}
-
-      <h3 style={{fontSize:13,fontWeight:600,color:_c.t3,marginTop:24,marginBottom:12,letterSpacing:".04em"}}>BANNED / REJECTED ({rejected.length})</h3>
-      {rejected.map(v=><div key={v.id} style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:14,marginBottom:8}}>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-          <div><span style={{fontSize:13,fontWeight:600,color:_c.t3}}>{v.truck||"Unnamed"}</span><span style={{fontSize:11,color:_c.t4,marginLeft:8}}>{v.email}</span></div>
-          <Btn variant="success" size="sm" onClick={()=>updV(v.id,"approved")}>Reinstate</Btn>
-        </div>
-      </div>)}
-      {rejected.length===0&&<div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20,textAlign:"center",color:_c.t4,fontSize:12}}>No banned users.</div>}
-    </div>;
-
-    /* ===== SECURITY ===== */
-    if(page==="security")return<div>
-      <h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Security</h1>
-      <p style={{fontSize:13,color:_c.t4,marginBottom:24}}>Active defenses and form protection status.</p>
-      {[
-        {name:"Honeypot Fields",status:"ACTIVE",desc:"Hidden _hp input on all 3 forms. Bot submissions silently dropped.",icon:"\ud83c\udfaf",color:_c.green},
-        {name:"Session Limiting",status:"ACTIVE",desc:"Max 5 submissions per form type per session. Counter: event/vendor/waitlist.",icon:"\ud83d\udd12",color:_c.green},
-        {name:"Timing Gate",status:"ACTIVE",desc:"3-second minimum before submit allowed. window._formOpened set on mount.",icon:"\u23f1\ufe0f",color:_c.green},
-        {name:"Input Sanitizer",status:"ACTIVE",desc:"Strips <>{}, javascript: URIs, and on*= event handlers from all inputs. 500 char limit.",icon:"\ud83e\uddf9",color:_c.green},
-        {name:"Content Security Policy",status:"ACTIVE",desc:"CSP meta tag injected on load. Blocks inline scripts, restricts connect-src to Firebase/Google.",icon:"\ud83d\udee1\ufe0f",color:_c.green},
-        {name:"Rate Limiter",status:"ACTIVE",desc:"10-second cooldown per form type on Google Sheet submissions.",icon:"\u26a1",color:_c.green},
-        {name:"Admin Auth",status:"ACTIVE",desc:"SHA-256 hashed password + PIN. Two-factor gate before admin access.",icon:"\ud83d\udd11",color:_c.green},
-        {name:"Spam Detection",status:"ACTIVE",desc:`Pattern matching on submissions. ${allFlagged.length} flagged this session.`,icon:"\ud83d\udea8",color:allFlagged.length>0?_c.orange:_c.green},
-      ].map((s,i)=><div key={i} style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:16,marginBottom:8,display:"flex",alignItems:"center",gap:14}}>
-        <div style={{fontSize:22,flexShrink:0}}>{s.icon}</div>
-        <div style={{flex:1}}>
-          <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:13,fontWeight:600,color:_c.t1}}>{s.name}</span><span style={{fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:4,background:s.color===_c.green?_c.greenBg:_c.orangeBg,color:s.color,fontFamily:"var(--mono)"}}>{s.status}</span></div>
-          <div style={{fontSize:11,color:_c.t4,marginTop:2}}>{s.desc}</div>
-        </div>
-      </div>)}
-
-      <div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20,marginTop:20}}>
-        <h3 style={{fontSize:13,fontWeight:600,color:_c.t3,marginBottom:12}}>FIRESTORE COLLECTIONS</h3>
-        {[["vendors",vendors.length],["events",events.length],["waitlist",waitlist.length]].map(([name,count])=>
-          <div key={name} style={{display:"flex",justifyContent:"space-between",padding:"8px 0",borderBottom:`1px solid ${_c.border}`,fontSize:12}}>
-            <span style={{color:_c.t2,fontFamily:"var(--mono)"}}>{name}</span><span style={{color:_c.t4}}>{count} docs</span>
-          </div>
-        )}
-        <div style={{fontSize:10,color:_c.t4,marginTop:12}}>Project: faftrva {"\u00b7"} Auth: Firebase {"\u00b7"} Backup: Google Sheets + Apps Script</div>
-      </div>
-    </div>;
-
-    /* ===== SETTINGS ===== */
-    if(page==="settings")return<div>
-      <h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Settings</h1>
-      <p style={{fontSize:13,color:_c.t4,marginBottom:24}}>Admin configuration.</p>
-      <div style={{background:_c.card,borderRadius:10,border:`1px solid ${_c.border}`,padding:20}}>
-        <h3 style={{fontSize:13,fontWeight:600,color:_c.t3,marginBottom:16}}>QUICK ACTIONS</h3>
-        <div style={{display:"flex",gap:10,flexWrap:"wrap"}}>
-          <button onClick={()=>go("/")} style={{padding:"10px 18px",borderRadius:8,border:`1px solid ${_c.border}`,color:_c.t2,fontSize:13}}>{"\u2190"} Back to Site</button>
-          <button onClick={()=>setPage("security")} style={{padding:"10px 18px",borderRadius:8,border:`1px solid ${_c.border}`,color:_c.t2,fontSize:13}}>{"\ud83d\udd12"} Security Status</button>
-          <button onClick={()=>setPage("moderation")} style={{padding:"10px 18px",borderRadius:8,border:`1px solid ${_c.border}`,color:_c.t2,fontSize:13}}>{"\ud83d\udee1\ufe0f"} Moderation</button>
-        </div>
-        <div style={{marginTop:20,fontSize:11,color:_c.t4,fontFamily:"var(--mono)"}}>
-          <div>Firebase: faftrva.firebaseapp.com</div>
-          <div>Sheets backup: Active</div>
-          <div>Admin hash: SHA-256 dual-gate</div>
-        </div>
-      </div>
-    </div>;
-
-    return<div style={{color:_c.t4}}>Page not found.</div>;
-  };
-
-  return<div style={{minHeight:"100vh",background:_c.bg,color:_c.t1}}>
-    {/* Desktop sidebar */}
-    <div className="dsk"><SideNav/></div>
-    {/* Mobile header */}
-    <div className="mobtn" style={{position:"fixed",top:0,left:0,right:0,zIndex:199,background:_c.card,borderBottom:`1px solid ${_c.border}`,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
-      <div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:16}}>{"🚚"}</span><span style={{fontSize:13,fontWeight:700,color:"var(--accent)",fontFamily:"var(--mono)"}}>FAFT ADMIN</span></div>
-      <button onClick={()=>setMobSide(!mobSide)} style={{fontSize:18,color:_c.t3}}>{mobSide?"\u2715":"\u2630"}</button>
-    </div>
-    {mobSide&&<div className="mobtn" style={{position:"fixed",inset:0,top:48,zIndex:198}}><SideNav/></div>}
-    {/* Main content */}
-    <div style={{marginLeft:typeof window!=="undefined"&&window.innerWidth>768?sideW:0,padding:"clamp(20px,3vw,40px)",paddingTop:typeof window!=="undefined"&&window.innerWidth<=768?68:"clamp(20px,3vw,40px)"}}>
-      <PageContent/>
-    </div>
+    <div style={{display:"flex",flexWrap:"wrap",gap:"6px 16px",fontSize:12,color:"var(--sub)",marginBottom:6}}>{e.location&&<span>{"\ud83d\udccd"} {e.location}</span>}{e.attendance&&<span>{"\ud83d\udc65"} {e.attendance} guests</span>}{e.cuisine&&<span>{_cuisineEmoji(e.cuisine)} {e.cuisine}</span>}{e.trucks&&e.trucks!=="1"&&<span>{"\ud83d\ude9a"} {e.trucks} trucks</span>}</div>
+    {e.notes&&<p style={{fontSize:12,color:"var(--sub)",lineHeight:1.5,marginBottom:8}}>{e.notes}</p>}
+    {responded?<div style={{display:"flex",alignItems:"center",gap:6,padding:"8px 12px",background:"var(--greenL)",borderRadius:8,fontSize:12,color:"var(--green)",fontWeight:500}}>{"\u2713"} Quote sent</div>
+    :full?<div style={{padding:"8px 12px",background:"var(--tint)",borderRadius:8,fontSize:12,color:"var(--mute)"}}>Max responses reached</div>
+    :!showForm?<Btn variant="blue" size="sm" onClick={()=>setShowForm(true)}>Send a Quote</Btn>
+    :<div style={{background:"var(--tint)",borderRadius:10,padding:16,marginTop:8,border:"1px solid var(--line)"}}><h4 style={{fontSize:13,fontWeight:600,marginBottom:12}}>Your quote</h4><Input label="Quote amount" value={quote} onChange={e=>setQuote(e.target.value)} placeholder="e.g. $1,200" required/><Input label="Message to host" value={message} onChange={e=>setMessage(e.target.value)} placeholder="Why you're a great fit..." textarea rows={3}/><Input label="Availability" value={availability} onChange={e=>setAvailability(e.target.value)} placeholder="e.g. Available all day, setup by 3pm"/><div style={{display:"flex",gap:8}}><Btn variant="ghost" size="sm" onClick={()=>setShowForm(false)}>Cancel</Btn><Btn variant="accent" size="sm" onClick={sendResponse} disabled={sending}>{sending?"Sending...":"Send Quote"}</Btn></div></div>}
   </div>
 }
 
-function Footer({go}){return<footer style={{borderTop:"1px solid var(--line)",padding:"32px 20px 24px"}}><W style={{padding:0}}><div style={{display:"flex",flexWrap:"wrap",gap:"clamp(20px,4vw,40px)",marginBottom:24}}><div style={{minWidth:200,flex:"2 1 200px"}}><div style={{display:"flex",alignItems:"baseline",gap:5}}><span style={{fontFamily:"var(--serif)",fontSize:15,fontStyle:"italic"}}>find a</span><span style={{fontFamily:"var(--serif)",fontSize:15,fontWeight:500,color:"var(--accent)"}}>food truck</span></div><p style={{fontSize:11,color:"var(--sub)",marginTop:6,lineHeight:1.6,fontWeight:300}}>Richmond's booking network for food trucks and events.</p><p style={{fontSize:10,color:"var(--mute)",marginTop:4}}>findafoodtruckrva.com</p><p style={{fontSize:10,color:"var(--sub)",marginTop:8,fontFamily:"var(--mono)"}}>Laurence Ash LLC</p></div>{[["Network",[["Submit Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"]]],["Account",[["Vendor Login","/login"],[".","/admin"]]]].map(([t,items])=><div key={t} style={{minWidth:120}}><h4 style={{fontSize:10,fontWeight:500,color:"var(--mute)",letterSpacing:".06em",marginBottom:10}}>{t.toUpperCase()}</h4>{items.map(([l,to])=><div key={l} onClick={()=>go(to)} style={{color:to==="/admin"?"var(--bg)":"var(--sub)",fontSize:to==="/admin"?4:12,cursor:"pointer",padding:"3px 0",fontWeight:300,userSelect:to==="/admin"?"none":"auto"}}>{l}</div>)}</div>)}</div><div style={{paddingTop:12,borderTop:"1px solid var(--line)",display:"flex",justifyContent:"space-between"}}><span style={{color:"var(--mute)",fontSize:10,fontFamily:"var(--mono)"}}>{"\u00a9"} 2026 FAFTRVA</span><span style={{color:"var(--mute)",fontSize:10}}>Richmond, VA</span></div></W></footer>}
+/* ================================================================ VERIFIED ACCESS ================================================================ */
+function AccessPage({go}){
+  const[done,setDone]=useState(false);const[loading,setLoading]=useState(false);const[f,sF]=useState({name:"",truck:"",cuisine:"",email:"",why:"",_hp:""});const u=(k,v)=>sF(p=>({...p,[k]:v}));
+  useEffect(()=>{window._formOpened=Date.now()},[]);
+  const submit=async()=>{if(!_honeypotClean(f._hp))return;if(!_timingOk()){alert("Please review.");return}if(!_canSubmit("waitlist")){alert("Limit reached.");return}if(!f.name||!f.truck||!f.email||!f.cuisine){alert("Fill all fields.");return}if(!_validEmail(f.email)){alert("Valid email required.");return}setLoading(true);try{await addDoc(collection(db,"waitlist"),{name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email),why:_san(f.why),status:"new",createdAt:serverTimestamp()});submitToSheet({type:"waitlist",name:_san(f.name),truck:_san(f.truck),cuisine:_san(f.cuisine),email:_san(f.email)});setDone(true)}catch{alert("Something went wrong.")}setLoading(false)};
+  return<FormPage go={go} title="Verified Vendor Access" subtitle="Priority access and category protection.">
+    <div className="ani d1" style={{display:"flex",flexDirection:"column",gap:1,background:"var(--line)",borderRadius:10,overflow:"hidden",marginBottom:32}}>{[["Priority Placement","See events first. Respond before free tier."],["Direct Lead Routing","Matched to your cuisine automatically."],["Category Protection","Max 1-2 per cuisine. Competition capped."],["Featured Visibility","Highlighted in host matching."]].map(([t,d])=><div key={t} style={{background:"var(--card)",padding:"clamp(18px,3vw,28px)"}}><h3 style={{fontSize:13,fontWeight:600,marginBottom:3}}>{t}</h3><p style={{fontSize:12,color:"var(--sub)",lineHeight:1.6,fontWeight:300}}>{d}</p></div>)}</div>
+    {!done?<div className="ani d2" style={{background:"var(--card)",borderRadius:10,border:"1px solid var(--line)",padding:"clamp(20px,3.5vw,32px)"}}><h3 style={{fontSize:17,fontWeight:300,fontFamily:"var(--serif)",marginBottom:4}}>Join the waitlist</h3><p style={{fontSize:12,color:"var(--sub)",marginBottom:20}}>Limited per cuisine category.</p><HoneypotField value={f._hp} onChange={e=>u("_hp",e.target.value)}/><Input label="Your Name" value={f.name} onChange={e=>u("name",e.target.value)} placeholder="Full name" required/><Input label="Truck Name" value={f.truck} onChange={e=>u("truck",e.target.value)} placeholder="Your food truck" required/><Input label="Email" value={f.email} onChange={e=>u("email",e.target.value)} placeholder="you@email.com" type="email" required/><div style={{marginBottom:14}}><label style={{display:"block",fontSize:12,fontWeight:500,color:"var(--sub)",marginBottom:6}}>Cuisine</label><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{CUISINES.slice(0,-1).map(c=><Chip key={c} active={f.cuisine===c} onClick={()=>u("cuisine",c)}>{c}</Chip>)}</div></div><Input label="Why interested?" value={f.why} onChange={e=>u("why",e.target.value)} placeholder="About your truck..." textarea rows={3}/><Btn variant="accent" full onClick={submit} disabled={loading}>{loading?"Submitting...":"Submit Application"}</Btn></div>
+    :<div className="ani" style={{textAlign:"center",padding:"40px 0"}}><div style={{width:44,height:44,borderRadius:99,background:"var(--accent)",color:"#fff",display:"flex",alignItems:"center",justifyContent:"center",fontSize:18,margin:"0 auto 20px"}}>{"\u2713"}</div><h3 style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",margin:"0 0 10px"}}>Application received.</h3><p style={{fontSize:14,color:"var(--sub)"}}>We'll reach out when verified launches.</p></div>}
+  </FormPage>
+}
 
+/* ================================================================ ADMIN (login, pin, dashboard) ================================================================ */
+function AdminLogin({onLogin}){const[pw,setPw]=useState("");const[e,sE]=useState(false);const[l,sL]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div className="ani" style={{width:"100%",maxWidth:320,padding:28,borderRadius:10,background:"#141414",border:"1px solid #222",textAlign:"center"}}><h2 style={{fontSize:18,fontWeight:500,color:"#fff",marginBottom:20}}>Admin Access</h2>{e&&<div style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Invalid.</div>}<input value={pw} onChange={ev=>setPw(ev.target.value)} onKeyDown={async ev=>{if(ev.key==="Enter"){sL(true);const ok=await onLogin(pw);if(!ok){sE(true);setPw("")}sL(false)}}} type="password" placeholder="Password" style={{width:"100%",padding:"11px 14px",borderRadius:8,border:"1px solid #333",fontSize:14,background:"#0A0A0A",color:"#fff",marginBottom:10,textAlign:"center"}}/><button onClick={async()=>{sL(true);const ok=await onLogin(pw);if(!ok){sE(true);setPw("")}sL(false)}} style={{width:"100%",padding:11,borderRadius:8,background:"#fff",color:"#000",fontSize:14,fontWeight:500}}>{l?"...":"Enter"}</button></div></div>}
+function PinGate({onUnlock,onCancel}){const[pin,setPin]=useState("");const[e,sE]=useState(false);return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"#0A0A0A",padding:20}}><div style={{width:"100%",maxWidth:280,textAlign:"center"}}><h2 style={{fontSize:16,fontWeight:500,color:"#fff",marginBottom:20}}>Security PIN</h2>{e&&<div style={{color:"#EF4444",fontSize:12,marginBottom:10}}>Wrong PIN.</div>}<input value={pin} onChange={e=>setPin(e.target.value)} onKeyDown={async e=>{if(e.key==="Enter"){if(await _check(pin,SH))onUnlock();else{sE(true);setPin("")}}}} type="password" maxLength={4} placeholder={"\u2022\u2022\u2022\u2022"} style={{width:"100%",padding:12,borderRadius:8,border:"1px solid #333",fontSize:22,letterSpacing:10,background:"#0A0A0A",color:"#fff",textAlign:"center",marginBottom:14}}/><div style={{display:"flex",gap:8}}><button onClick={onCancel} style={{flex:1,padding:10,borderRadius:8,border:"1px solid #333",color:"#666",fontSize:13}}>Cancel</button><button onClick={async()=>{if(await _check(pin,SH))onUnlock();else{sE(true);setPin("")}}} style={{flex:1,padding:10,borderRadius:8,background:"#fff",color:"#000",fontSize:13,fontWeight:500}}>Unlock</button></div></div></div>}
+
+function AdminDash({go}){
+  const[page,setPage]=useState("dashboard");const[vendors,setVendors]=useState([]);const[events,setEvents]=useState([]);const[waitlist,setWaitlist]=useState([]);const[allResp,setAllResp]=useState([]);const[loading,setLoading]=useState(true);const[mobSide,setMobSide]=useState(false);const[selectedEvt,setSelectedEvt]=useState(null);const[vSearch,setVSearch]=useState("");
+  useEffect(()=>{const u1=onSnapshot(query(collection(db,"vendors"),orderBy("createdAt","desc")),s=>{setVendors(s.docs.map(d=>({id:d.id,...d.data()})));setLoading(false)});const u2=onSnapshot(query(collection(db,"events"),orderBy("createdAt","desc")),s=>setEvents(s.docs.map(d=>({id:d.id,...d.data()}))));const u3=onSnapshot(query(collection(db,"waitlist"),orderBy("createdAt","desc")),s=>setWaitlist(s.docs.map(d=>({id:d.id,...d.data()}))));const u4=onSnapshot(query(collection(db,"responses"),orderBy("createdAt","desc")),s=>setAllResp(s.docs.map(d=>({id:d.id,...d.data()}))));return()=>{u1();u2();u3();u4()}},[]);
+  const updV=async(id,st)=>updateDoc(doc(db,"vendors",id),{status:st});const updT=async(id,t)=>updateDoc(doc(db,"vendors",id),{tier:t});const updE=async(id,st)=>updateDoc(doc(db,"events",id),{status:st});const delE=async id=>{if(window.confirm("Delete permanently?"))await deleteDoc(doc(db,"events",id))};
+  const pending=vendors.filter(v=>v.status==="pending");const approved=vendors.filter(v=>v.status==="approved");const rejected=vendors.filter(v=>v.status==="rejected");const verified=vendors.filter(v=>v.tier==="verified");const newEvts=events.filter(e=>e.status==="new");const bookedEvts=events.filter(e=>e.status==="booked");
+  const spamP=[/crypto/i,/bitcoin/i,/nft/i,/forex/i,/casino/i,/buy now/i,/free money/i,/click here/i,/4343/,/t\.me\//i];
+  const detectSpam=t=>{if(!t)return null;for(const p of spamP)if(p.test(t))return{pattern:p.source};return null};
+  const flagged=[...vendors.map(v=>({...v,spam:detectSpam(v.truck)||detectSpam(v.description),src:"vendor"})).filter(f=>f.spam),...events.map(e=>({...e,spam:detectSpam(e.name)||detectSpam(e.notes)||detectSpam(e.attendance?.toString()),src:"event"})).filter(f=>f.spam)];
+  const staleEvts=events.filter(e=>e.status==="new"&&_daysSince(e.createdAt)>=3&&(e.responseCount||0)===0);
+  const _c={bg:"#0A0A0A",card:"#141414",border:"#222",t1:"#fff",t2:"#ccc",t3:"#888",t4:"#555",accent:"#D4482C",accentBg:"rgba(212,72,44,.12)",green:"#2D8C3C",greenBg:"rgba(45,140,60,.12)",red:"#DC2626",redBg:"rgba(220,38,38,.12)",blue:"#2563EB",blueBg:"rgba(37,99,235,.12)",orange:"#E65100",orangeBg:"rgba(230,81,0,.12)"};
+  const sideW=200;
+  const navItems=[{id:"dashboard",label:"Dashboard",icon:"\ud83d\udcca"},{id:"trucks",label:"Trucks",icon:"\ud83d\ude9a"},{id:"events",label:"Events",icon:"\ud83d\udccd",badge:newEvts.length||null},{id:"members",label:"Members",icon:"\ud83d\udc65",badge:pending.length||null},{id:"moderation",label:"Moderation",icon:"\ud83d\udee1\ufe0f",badge:flagged.length||null},{id:"settings",label:"Settings",icon:"\u2699\ufe0f"}];
+  const SideNav=()=><div style={{width:sideW,minHeight:"100vh",background:_c.card,borderRight:"1px solid "+_c.border,padding:"20px 0",position:"fixed",left:0,top:0,zIndex:200,overflowY:"auto"}}><div style={{padding:"0 16px 20px",display:"flex",alignItems:"center",gap:8,borderBottom:"1px solid "+_c.border,marginBottom:8}}><span style={{fontSize:20}}>{"\ud83d\ude9a"}</span><div><div style={{fontSize:14,fontWeight:700,color:_c.accent,fontFamily:"var(--mono)"}}>FAFT</div><div style={{fontSize:9,color:_c.t4,fontFamily:"var(--mono)"}}>RVA ADMIN</div></div></div>{navItems.map(n=><button key={n.id} onClick={()=>{setPage(n.id);setMobSide(false);setSelectedEvt(null)}} style={{display:"flex",alignItems:"center",gap:10,width:"100%",padding:"11px 16px",fontSize:13,fontWeight:page===n.id?600:400,color:page===n.id?_c.accent:_c.t3,background:page===n.id?_c.accentBg:"transparent",borderLeft:page===n.id?"3px solid "+_c.accent:"3px solid transparent",position:"relative"}}><span style={{fontSize:15}}>{n.icon}</span>{n.label}{n.badge&&<span style={{position:"absolute",right:12,background:_c.red,color:"#fff",fontSize:9,fontWeight:700,padding:"2px 6px",borderRadius:10}}>{n.badge}</span>}</button>)}<div style={{position:"absolute",bottom:16,left:0,right:0,padding:"0 16px"}}><button onClick={()=>go("/")} style={{fontSize:11,color:_c.t4,border:"1px solid "+_c.border,padding:"6px 12px",borderRadius:6,width:"100%"}}>{"\u2190"} Back to Site</button></div></div>;
+  const Stat=({label,value,sub,color})=><div style={{background:_c.card,borderRadius:10,padding:"16px 18px",border:"1px solid "+_c.border,flex:"1 1 140px",minWidth:140}}><div style={{fontSize:10,fontWeight:600,color:_c.t4,fontFamily:"var(--mono)"}}>{label}</div><div style={{fontSize:28,fontWeight:300,color:color||_c.accent,fontFamily:"var(--serif)"}}>{value}</div>{sub&&<div style={{fontSize:11,color:_c.t4,marginTop:2}}>{sub}</div>}</div>;
+
+  const Content=()=>{
+    if(loading)return<Loader/>;
+    if(page==="dashboard")return<div><h1 style={{fontSize:28,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:20}}>Command Center</h1><div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:24}}><Stat label="VENDORS" value={vendors.length} sub={pending.length?"+"+pending.length+" pending":"\u2014"}/><Stat label="EVENTS" value={events.length} sub={newEvts.length+" new \u00b7 "+bookedEvts.length+" booked"} color="#fff"/><Stat label="RESPONSES" value={allResp.length} sub={allResp.filter(r=>r.status==="accepted").length+" accepted"} color={_c.blue}/><Stat label="VERIFIED" value={verified.length} sub={"of "+approved.length+" approved"} color={_c.green}/></div>
+      {/* Stale events warning */}
+      {staleEvts.length>0&&<div style={{background:_c.orangeBg,borderRadius:10,padding:16,marginBottom:16,border:"1px solid rgba(230,81,0,.2)"}}><div style={{fontSize:13,fontWeight:600,color:_c.orange,marginBottom:8}}>Events needing attention ({staleEvts.length})</div>{staleEvts.slice(0,3).map(e=><div key={e.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid rgba(230,81,0,.1)"}}><div><span style={{fontSize:13,color:_c.t2}}>{e.eventType} \u00b7 {e.name}</span><span style={{fontSize:11,color:_c.t4,marginLeft:8}}>{_daysSince(e.createdAt)}d old, 0 responses</span></div><button onClick={()=>{navigator.clipboard?.writeText("New event just dropped: "+e.eventType+" on "+e.date+" in "+(e.location||"TBD")+". "+e.attendance+" guests, budget "+(e.budget||"TBD")+". Vendors, submit your quote at findafoodtruckrva.com \ud83d\ude9a")}} style={{padding:"5px 12px",borderRadius:6,border:"1px solid "+_c.border,color:_c.t3,fontSize:11}}>Copy FB Post</button></div>)}</div>}
+      {/* Pending + recent */}
+      <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))",gap:14,marginBottom:24}}>
+        <div style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:20}}><div style={{fontSize:14,fontWeight:600,color:_c.t1,marginBottom:14}}>Pending Actions</div>{pending.slice(0,4).map(v=><div key={v.id} style={{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid "+_c.border}}><div><div style={{fontSize:13,color:_c.t2}}>{v.truck||v.owner}</div><div style={{fontSize:11,color:_c.t4}}>{v.cuisine}</div></div><div style={{display:"flex",gap:4}}><button onClick={()=>updV(v.id,"approved")} style={{width:26,height:26,borderRadius:6,background:_c.greenBg,color:_c.green,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>{"\u2713"}</button><button onClick={()=>updV(v.id,"rejected")} style={{width:26,height:26,borderRadius:6,background:_c.redBg,color:_c.red,fontSize:12,display:"flex",alignItems:"center",justifyContent:"center"}}>{"\u2715"}</button></div></div>)}{pending.length===0&&<div style={{color:_c.t4,fontSize:12,padding:16,textAlign:"center"}}>All clear</div>}</div>
+        <div style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:20}}><div style={{fontSize:14,fontWeight:600,color:_c.t1,marginBottom:14}}>Recent Bookings</div>{bookedEvts.slice(0,4).map(e=>{const a=allResp.find(r=>r.eventId===e.id&&r.status==="accepted");return<div key={e.id} style={{padding:"8px 0",borderBottom:"1px solid "+_c.border}}><div style={{display:"flex",justifyContent:"space-between",fontSize:13}}><span style={{color:_c.t2}}>{e.eventType}</span><span style={{color:_c.green,fontFamily:"var(--mono)"}}>{a?.quote||""}</span></div><div style={{fontSize:11,color:_c.t4}}>{e.name} {"\u2192"} {a?.truckName||"?"}</div></div>})}{bookedEvts.length===0&&<div style={{color:_c.t4,fontSize:12,padding:16,textAlign:"center"}}>No bookings yet</div>}</div>
+      </div>
+      {/* Activity feed */}
+      <div style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:20}}><div style={{fontSize:14,fontWeight:600,color:_c.t1,marginBottom:14}}>Recent Activity</div>{[...vendors.slice(0,3).map(v=>({time:v.createdAt,text:v.truck+" signed up",type:"vendor"})),...events.slice(0,3).map(e=>({time:e.createdAt,text:e.name+" submitted "+e.eventType,type:"event"})),...allResp.slice(0,3).map(r=>({time:r.createdAt,text:r.truckName+" quoted "+r.eventType,type:"response"}))].sort((a,b)=>{const at=a.time?.toDate?a.time.toDate().getTime():0;const bt=b.time?.toDate?b.time.toDate().getTime():0;return bt-at}).slice(0,8).map((a,i)=><div key={i} style={{padding:"6px 0",borderBottom:"1px solid "+_c.border,fontSize:12,display:"flex",justifyContent:"space-between"}}><span style={{color:_c.t2}}>{a.text}</span><span style={{color:_c.t4}}>{_timeAgo(a.time)}</span></div>)}</div>
+    </div>;
+
+    if(page==="events"){
+      if(selectedEvt){const evt=events.find(e=>e.id===selectedEvt);const evtResp=allResp.filter(r=>r.eventId===selectedEvt);if(!evt)return<div style={{color:_c.t4}}>Not found.</div>;return<div><button onClick={()=>setSelectedEvt(null)} style={{fontSize:13,color:_c.t4,marginBottom:16}}>{"\u2190"} Back</button><div style={{display:"flex",alignItems:"center",gap:10,marginBottom:4}}><h1 style={{fontSize:22,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1}}>{evt.eventType}</h1><StatusBadge status={evt.status}/></div><p style={{fontSize:13,color:_c.t4,marginBottom:16}}>{evt.date} {evt.time&&"at "+evt.time} \u00b7 {evt.location} \u00b7 {evt.attendance} guests \u00b7 Budget: {evt.budget||"N/A"}</p><div style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:18,marginBottom:16}}><div style={{fontSize:13,fontWeight:600,color:_c.t3,marginBottom:8}}>HOST</div><div style={{fontSize:13,color:_c.t2}}>{evt.name} \u00b7 {evt.email} \u00b7 {evt.phone}</div>{evt.notes&&<div style={{fontSize:12,color:_c.t4,marginTop:6,fontStyle:"italic"}}>"{evt.notes}"</div>}{evt.trackToken&&<div style={{fontSize:11,color:_c.t4,marginTop:6,fontFamily:"var(--mono)"}}>Track: .../#/track/{evt.trackToken}</div>}</div><h3 style={{fontSize:14,fontWeight:600,color:_c.t1,marginBottom:12}}>Responses ({evtResp.length})</h3>{evtResp.map(r=><div key={r.id} style={{background:_c.card,borderRadius:10,border:r.status==="accepted"?"1px solid "+_c.green:"1px solid "+_c.border,padding:16,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}><div><div style={{display:"flex",alignItems:"center",gap:8}}><span style={{fontSize:14,fontWeight:600,color:_c.t1}}>{r.truckName}</span><StatusBadge status={r.status}/></div><div style={{fontSize:12,color:_c.t4}}>{r.vendorCuisine} \u00b7 {r.vendorEmail}</div></div>{r.quote&&<span style={{fontSize:18,fontWeight:600,fontFamily:"var(--mono)",color:_c.green}}>{r.quote}</span>}</div>{r.message&&<p style={{fontSize:12,color:_c.t3,marginTop:6,fontStyle:"italic"}}>"{r.message}"</p>}{evt.status!=="booked"&&r.status==="sent"&&<div style={{marginTop:8,display:"flex",gap:6}}><button onClick={async()=>{await updateDoc(doc(db,"responses",r.id),{status:"accepted"});for(const o of evtResp)if(o.id!==r.id&&o.status==="sent")await updateDoc(doc(db,"responses",o.id),{status:"declined"});await updateDoc(doc(db,"events",selectedEvt),{status:"booked",bookedVendorId:r.vendorId,bookedAt:serverTimestamp()})}} style={{padding:"7px 16px",borderRadius:6,background:_c.green,color:"#fff",fontSize:12,fontWeight:600}}>Accept + Book</button><button onClick={()=>updateDoc(doc(db,"responses",r.id),{status:"declined"})} style={{padding:"7px 16px",borderRadius:6,border:"1px solid "+_c.red,color:_c.red,fontSize:12}}>Decline</button></div>}</div>)}{evtResp.length===0&&<div style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:20,textAlign:"center",color:_c.t4,fontSize:12}}>No responses yet{_daysSince(evt.createdAt)>=2&&<span> \u2014 <button onClick={()=>{navigator.clipboard?.writeText("New event: "+evt.eventType+" on "+evt.date+" in "+(evt.location||"TBD")+". Vendors, quote at findafoodtruckrva.com")}} style={{color:_c.accent,textDecoration:"underline",background:"none",border:"none",fontSize:12,cursor:"pointer"}}>Copy FB post</button></span>}</div>}<div style={{display:"flex",gap:8,marginTop:16}}>{evt.status!=="booked"&&evt.status!=="closed"&&<button onClick={()=>updE(selectedEvt,"closed")} style={{padding:"8px 16px",borderRadius:6,border:"1px solid "+_c.border,color:_c.t3,fontSize:12}}>Close</button>}<button onClick={()=>delE(selectedEvt).then(()=>setSelectedEvt(null))} style={{padding:"8px 16px",borderRadius:6,border:"1px solid "+_c.red,color:_c.red,fontSize:12}}>Delete</button></div></div>}
+      return<div><h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:20}}>Events ({events.length})</h1>{events.map(e=>{const er=allResp.filter(r=>r.eventId===e.id);const age=_daysSince(e.createdAt);const stale=e.status==="new"&&age>=3&&(e.responseCount||0)===0;return<div key={e.id} onClick={()=>setSelectedEvt(e.id)} style={{background:_c.card,borderRadius:10,border:stale?"1px solid rgba(230,81,0,.4)":"1px solid "+_c.border,padding:18,marginBottom:10,cursor:"pointer"}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}><div><div style={{display:"flex",alignItems:"center",gap:8,marginBottom:3}}><span style={{fontSize:14,fontWeight:600,color:_c.t1}}>{e.eventType||"Event"}</span><StatusBadge status={e.status}/><span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:_c.blueBg,color:_c.blue,fontWeight:600}}>{er.length} resp</span>{stale&&<span style={{fontSize:10,padding:"2px 8px",borderRadius:4,background:_c.orangeBg,color:_c.orange,fontWeight:600}}>STALE</span>}</div><div style={{fontSize:12,color:_c.t3}}>{e.date} \u00b7 {e.location} \u00b7 {e.attendance} guests</div><div style={{fontSize:12,color:_c.t4}}>{e.name} \u00b7 {_timeAgo(e.createdAt)}</div></div>{e.budget&&<div style={{fontSize:14,fontWeight:600,color:_c.green,fontFamily:"var(--mono)"}}>{e.budget}</div>}</div></div>})}{events.length===0&&<div style={{color:_c.t4,fontSize:12,textAlign:"center",padding:40}}>No events.</div>}</div>;
+    }
+
+    if(page==="trucks"){const filt=vSearch?vendors.filter(v=>(v.truck||"").toLowerCase().includes(vSearch.toLowerCase())||(v.cuisine||"").toLowerCase().includes(vSearch.toLowerCase())||(v.owner||"").toLowerCase().includes(vSearch.toLowerCase())):vendors;return<div><h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:4}}>Trucks ({vendors.length})</h1><p style={{fontSize:13,color:_c.t4,marginBottom:16}}>{approved.length} approved \u00b7 {verified.length} verified \u00b7 {pending.length} pending</p><input value={vSearch} onChange={e=>setVSearch(e.target.value)} placeholder="Search trucks, cuisine, owner..." style={{width:"100%",padding:"10px 14px",borderRadius:8,border:"1px solid "+_c.border,background:_c.bg,color:_c.t1,fontSize:13,marginBottom:16}}/>{filt.map(v=><div key={v.id} style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:16,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}><div style={{display:"flex",gap:10}}><div style={{fontSize:24}}>{_cuisineEmoji(v.cuisine)}</div><div><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:2}}><span style={{fontSize:14,fontWeight:600,color:_c.t1}}>{v.truck||"Unnamed"}</span><StatusBadge status={v.status}/><Badge text={v.tier==="verified"?"VERIFIED":"FREE"} color={v.tier==="verified"?"accent":"gray"}/></div><div style={{fontSize:12,color:_c.t3}}>{v.cuisine} \u00b7 {v.owner} \u00b7 {v.email}</div>{v.phone&&<div style={{fontSize:11,color:_c.t4}}>{v.phone}</div>}<div style={{fontSize:11,color:_c.t4,marginTop:2}}>Profile: {_profilePct(v)}%</div></div></div><div style={{display:"flex",gap:6,flexWrap:"wrap"}}>{v.status==="pending"&&<><Btn variant="success" size="sm" onClick={()=>updV(v.id,"approved")}>Approve</Btn><Btn variant="danger" size="sm" onClick={()=>updV(v.id,"rejected")}>Reject</Btn></>}{v.status==="approved"&&<>{v.tier==="free"?<Btn variant="accent" size="sm" onClick={()=>updT(v.id,"verified")}>Verify</Btn>:<Btn variant="ghost" size="sm" onClick={()=>updT(v.id,"free")}>Unverify</Btn>}<Btn variant="danger" size="sm" onClick={()=>updV(v.id,"rejected")}>Suspend</Btn></>}{v.status==="rejected"&&<Btn variant="success" size="sm" onClick={()=>updV(v.id,"approved")}>Reinstate</Btn>}</div></div></div>)}</div>}
+
+    if(page==="members")return<div><h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:20}}>Members</h1>{pending.length>0&&<><div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12}}><h3 style={{fontSize:13,fontWeight:600,color:_c.t3}}>PENDING ({pending.length})</h3>{pending.length>1&&<button onClick={async()=>{if(window.confirm("Approve all "+pending.length+" pending?")){for(const v of pending)await updV(v.id,"approved")}}} style={{fontSize:11,color:_c.green,border:"1px solid "+_c.green,padding:"4px 12px",borderRadius:6}}>Approve All</button>}</div>{pending.map(v=><div key={v.id} style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:16,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",flexWrap:"wrap",gap:8}}><div><div style={{fontSize:14,fontWeight:600,color:_c.t1}}>{v.truck||v.owner}</div><div style={{fontSize:12,color:_c.t4}}>{v.cuisine} \u00b7 {v.email} \u00b7 {v.phone||"no phone"}</div>{v.description&&<div style={{fontSize:11,color:_c.t4,marginTop:4,fontStyle:"italic"}}>"{v.description}"</div>}</div><div style={{display:"flex",gap:6}}><Btn variant="success" size="sm" onClick={()=>updV(v.id,"approved")}>Approve</Btn><Btn variant="danger" size="sm" onClick={()=>updV(v.id,"rejected")}>Decline</Btn></div></div></div>)}</>}{waitlist.length>0&&<><h3 style={{fontSize:13,fontWeight:600,color:_c.t3,marginTop:24,marginBottom:12}}>WAITLIST ({waitlist.length})</h3>{waitlist.map(w=><div key={w.id} style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:14,marginBottom:8}}><div style={{fontSize:14,fontWeight:600,color:_c.t1}}>{w.truck||w.name}</div><div style={{fontSize:12,color:_c.t4}}>{w.cuisine} \u00b7 {w.email}</div>{w.why&&<div style={{fontSize:11,color:_c.t4,marginTop:4,fontStyle:"italic"}}>"{w.why}"</div>}</div>)}</>}{pending.length===0&&waitlist.length===0&&<div style={{color:_c.t4,textAlign:"center",padding:40}}>No pending members.</div>}</div>;
+
+    if(page==="moderation")return<div><h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:20}}>Moderation</h1><h3 style={{fontSize:13,fontWeight:600,color:_c.red,marginBottom:12}}>FLAGGED ({flagged.length})</h3>{flagged.map((f,i)=><div key={i} style={{background:_c.card,borderRadius:10,border:"1px solid rgba(220,38,38,.2)",padding:14,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><div><span style={{fontSize:13,fontWeight:600,color:_c.red}}>Spam: {f.truck||f.name||f.eventType||"?"}</span><span style={{fontSize:11,color:_c.t4,marginLeft:8}}>Pattern: {f.spam.pattern} \u00b7 {f.src}</span></div>{f.src==="vendor"&&<button onClick={()=>updV(f.id,"rejected")} style={{padding:"6px 14px",borderRadius:6,background:_c.red,color:"#fff",fontSize:11}}>Remove</button>}{f.src==="event"&&<button onClick={()=>delE(f.id)} style={{padding:"6px 14px",borderRadius:6,background:_c.red,color:"#fff",fontSize:11}}>Delete</button>}</div></div>)}{flagged.length===0&&<div style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:20,textAlign:"center",color:_c.t4,fontSize:12}}>All clear.</div>}<h3 style={{fontSize:13,fontWeight:600,color:_c.t3,marginTop:24,marginBottom:12}}>REJECTED ({rejected.length})</h3>{rejected.map(v=><div key={v.id} style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:14,marginBottom:8}}><div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,color:_c.t3}}>{v.truck||"?"} \u00b7 {v.email}</span><Btn variant="success" size="sm" onClick={()=>updV(v.id,"approved")}>Reinstate</Btn></div></div>)}</div>;
+
+    if(page==="settings")return<div><h1 style={{fontSize:24,fontWeight:300,fontFamily:"var(--serif)",color:_c.t1,marginBottom:20}}>Settings</h1><div style={{background:_c.card,borderRadius:10,border:"1px solid "+_c.border,padding:20}}><div style={{display:"flex",gap:10,flexWrap:"wrap",marginBottom:20}}><button onClick={()=>go("/")} style={{padding:"10px 18px",borderRadius:8,border:"1px solid "+_c.border,color:_c.t2,fontSize:13}}>{"\u2190"} Site</button><button onClick={()=>setPage("moderation")} style={{padding:"10px 18px",borderRadius:8,border:"1px solid "+_c.border,color:_c.t2,fontSize:13}}>Moderation</button></div><div style={{fontSize:11,color:_c.t4,fontFamily:"var(--mono)",lineHeight:2}}>Firebase: faftrva.firebaseapp.com<br/>Response cap: {MAX_RESP} per event<br/>Contact: Hidden until vendor selected<br/>Collections: vendors({vendors.length}), events({events.length}), responses({allResp.length}), waitlist({waitlist.length})</div></div></div>;
+    return null;
+  };
+
+  return<div style={{minHeight:"100vh",background:_c.bg,color:_c.t1}}><div className="dsk"><SideNav/></div><div className="mobtn" style={{position:"fixed",top:0,left:0,right:0,zIndex:199,background:_c.card,borderBottom:"1px solid "+_c.border,padding:"12px 16px",display:"flex",justifyContent:"space-between",alignItems:"center"}}><span style={{fontSize:13,fontWeight:700,color:_c.accent,fontFamily:"var(--mono)"}}>FAFT ADMIN</span><button onClick={()=>setMobSide(!mobSide)} style={{fontSize:18,color:_c.t3}}>{mobSide?"\u2715":"\u2630"}</button></div>{mobSide&&<div className="mobtn" style={{position:"fixed",inset:0,top:48,zIndex:198}}><SideNav/></div>}<div style={{marginLeft:typeof window!=="undefined"&&window.innerWidth>768?sideW:0,padding:"clamp(20px,3vw,40px)",paddingTop:typeof window!=="undefined"&&window.innerWidth<=768?68:"clamp(20px,3vw,40px)"}}><Content/></div></div>
+}
+
+/* ================================================================ FOOTER ================================================================ */
+function Footer({go}){return<footer style={{borderTop:"1px solid var(--line)",padding:"32px 20px 24px"}}><W style={{padding:0}}><div style={{display:"flex",flexWrap:"wrap",gap:"clamp(20px,4vw,40px)",marginBottom:24}}><div style={{minWidth:200,flex:"2 1 200px"}}><div style={{display:"flex",alignItems:"baseline",gap:5}}><span style={{fontFamily:"var(--serif)",fontSize:15,fontStyle:"italic"}}>find a</span><span style={{fontFamily:"var(--serif)",fontSize:15,fontWeight:500,color:"var(--accent)"}}>food truck</span></div><p style={{fontSize:11,color:"var(--sub)",marginTop:6,lineHeight:1.6}}>Richmond's booking network for food trucks and events.</p><p style={{fontSize:10,color:"var(--sub)",marginTop:8,fontFamily:"var(--mono)"}}>Laurence Ash LLC</p></div>{[["Network",[["Submit Event","/submit"],["Join as Vendor","/join"],["Verified Access","/access"]]],["Account",[["Vendor Login","/login"],[".","/admin"]]]].map(([t,items])=><div key={t} style={{minWidth:120}}><h4 style={{fontSize:10,fontWeight:500,color:"var(--mute)",letterSpacing:".06em",marginBottom:10}}>{t.toUpperCase()}</h4>{items.map(([l,to])=><div key={l} onClick={()=>go(to)} style={{color:to==="/admin"?"var(--bg)":"var(--sub)",fontSize:to==="/admin"?4:12,cursor:"pointer",padding:"3px 0"}}>{l}</div>)}</div>)}</div><div style={{paddingTop:12,borderTop:"1px solid var(--line)",display:"flex",justifyContent:"space-between"}}><span style={{color:"var(--mute)",fontSize:10,fontFamily:"var(--mono)"}}>{"\u00a9"} 2026 FAFTRVA</span><span style={{color:"var(--mute)",fontSize:10}}>Richmond, VA</span></div></W></footer>}
+
+/* ================================================================ APP ROOT ================================================================ */
 export default function App(){
   const{route,go}=useRouter();const[user,setUser]=useState(null);const[vendorData,setVendorData]=useState(null);const[authLoading,setAuthLoading]=useState(true);const[adminAuth,setAdminAuth]=useState(false);const[adminPin,setAdminPin]=useState(false);
-
-  /* --- SECURITY: Content Security Policy meta tag --- */
-  useEffect(()=>{
-    if(!document.querySelector('meta[http-equiv="Content-Security-Policy"]')){
-      const meta=document.createElement("meta");
-      meta.httpEquiv="Content-Security-Policy";
-      meta.content="default-src 'self'; script-src 'self' https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://script.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src https://*.firebaseapp.com https://apis.google.com; img-src 'self' data: https:; object-src 'none'; base-uri 'self'";
-      document.head.appendChild(meta);
-    }
-  },[]);
-
-  useEffect(()=>{const unsub=onAuthStateChanged(auth,async(u)=>{setUser(u);if(u){try{const snap=await getDoc(doc(db,"vendors",u.uid));if(snap.exists())setVendorData(snap.data())}catch(e){}}else{setVendorData(null)}setAuthLoading(false)});return unsub},[]);
+  useEffect(()=>{if(!document.querySelector('meta[http-equiv="Content-Security-Policy"]')){const m=document.createElement("meta");m.httpEquiv="Content-Security-Policy";m.content="default-src 'self'; script-src 'self' https://apis.google.com https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://*.googleapis.com https://*.firebaseio.com https://*.firebaseapp.com https://script.google.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com; frame-src https://*.firebaseapp.com https://apis.google.com; img-src 'self' data: https:; object-src 'none'; base-uri 'self'";document.head.appendChild(m)}},[]);
+  useEffect(()=>{const unsub=onAuthStateChanged(auth,async u=>{setUser(u);if(u){try{const snap=await getDoc(doc(db,"vendors",u.uid));if(snap.exists())setVendorData(snap.data())}catch{}}else setVendorData(null);setAuthLoading(false)});return unsub},[]);
+  const trackMatch=route.match(/^\/track\/(.+)$/);const trackToken=trackMatch?trackMatch[1]:null;
   if(authLoading)return<div style={{minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",background:"var(--bg)"}}><style>{G}</style><Loader/></div>;
   if(route==="/admin"){if(!adminAuth)return<><style>{G}</style><AdminLogin onLogin={async pw=>{if(await _check(pw,AH)){setAdminAuth(true);return true}return false}}/></>;if(!adminPin)return<><style>{G}</style><PinGate onUnlock={()=>setAdminPin(true)} onCancel={()=>{setAdminAuth(false);go("/")}}/></>;return<><style>{G}</style><AdminDash go={go}/></>}
   return<div style={{background:"var(--bg)",minHeight:"100vh"}}><style>{G}</style><Nav go={go} route={route} user={user} vendorData={vendorData}/>
@@ -690,4 +276,6 @@ export default function App(){
     {(route==="/access"||route==="/pricing"||route==="/waitlist"||route==="/verified")&&<><AccessPage go={go}/><Footer go={go}/></>}
     {route==="/login"&&<><VendorLogin go={go}/><Footer go={go}/></>}
     {route==="/dashboard"&&<>{user?<VendorDashboard go={go} user={user}/>:<VendorLogin go={go}/>}<Footer go={go}/></>}
-  </div>}
+    {trackToken&&<><EventTracker go={go} token={trackToken}/><Footer go={go}/></>}
+  </div>
+}
