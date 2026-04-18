@@ -308,19 +308,3 @@ export default function App(){
     {trackToken&&<><EventTracker go={go} token={trackToken}/><Footer go={go}/></>}
   </div>
 }
-
-function testEmail() {
-
-  MailApp.sendEmail({
-
-    to: "contact@findafoodtruckrva.com",
-
-    subject: "Test from FAFT RVA",
-
-    body: "If you got this, the script works!",
-
-    name: "Find a Food Truck RVA"
-
-  });
-
-}
