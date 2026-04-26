@@ -11,7 +11,7 @@ const _h=async s=>{const e=new TextEncoder().encode(s);const h=await crypto.subt
 const _check=async(i,h)=>((await _h(i))===h);
 const AH="044f1bc08f0852260ce6e10da97fe285a160c0ad228a42c1b7f981f4b1fe6fef";
 const SH="b858460b54cc28b3e4e9c5f50b36baf44ccec41b1051d4a9f9ff662e194e6257";
-const API_URL="https://script.google.com/macros/s/AKfycbxycggwmA7JnSOkcLsk7zBAV1TT_y8lekdYBNODIE6YLQ5Lb_wtSKCsK5vaSctcu1Nj/exec";
+const API_URL="https://script.google.com/macros/s/AKfycbyEjfGbxlbtgXhurQkC5MfAdK2fQFiic9BJ-8aIfcPY2aCmR9jpCLc5IDZmRkwmw0YF/exec";
 function _san(s){if(typeof s!=="string")return s;return s.replace(/[<>{}]/g,"").replace(/javascript:/gi,"").replace(/on\w+\s*=/gi,"").trim().slice(0,500)}
 function _validEmail(e){return/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e)}
 function _fmtPhone(v){const d=v.replace(/\D/g,"").slice(0,10);if(d.length<=3)return d;if(d.length<=6)return"("+d.slice(0,3)+") "+d.slice(3);return"("+d.slice(0,3)+") "+d.slice(3,6)+"-"+d.slice(6)}
